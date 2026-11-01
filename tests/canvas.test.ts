@@ -165,7 +165,10 @@ try {
     const z = await zoom()
     const se = await app.rect('.resize-handle[data-handle="se"]')
     const from = { x: se.x + se.width / 2, y: se.y + se.height / 2 }
-    await app.drag(from, { x: from.x - 100 * z, y: from.y + 80 * z })
+    // Snapping (S-11) is held off with cmd, so the drag lands exactly where it ends.
+    await app.mouseDown(from.x, from.y, CMD)
+    for (let i = 1; i <= 5; i++) await app.mouseMove(from.x - (100 * z * i) / 5, from.y + (80 * z * i) / 5, 1, CMD)
+    await app.mouseUp(from.x - 100 * z, from.y + 80 * z, CMD)
     const style = ((await node('Card')) as any).style
     expect(style.width === '300px' && style.height === '200px', `size ${style.width} x ${style.height}`)
     const e = await app.rect('.resize-handle[data-handle="e"]')

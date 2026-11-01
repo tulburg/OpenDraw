@@ -375,5 +375,51 @@
         "detail": "field wrote 30deg; update_styles rotate 12deg, computed 12deg, in get_jsx"
       }
     ]
+  },
+  "S-11": {
+    "at": "2026-11-01T20:53:32.228Z",
+    "running": false,
+    "results": [
+      {
+        "name": "Select, move with snapping on and off, and nudge; undo and redo each (zoom 0.5, 1, 2)",
+        "pass": true,
+        "detail": "zoom 0.5: snap 200px with guide, cmd 194px, nudge 43px; zoom 1: snap 200px with guide, cmd 197px, nudge 43px; zoom 2: snap 200px with guide, cmd 199px, nudge 43px"
+      },
+      {
+        "name": "Shift-dragging 100 px right and 20 px down moves only horizontally (zoom 0.5, 1, 2)",
+        "pass": true,
+        "detail": "zoom 0.5: 140px, 40px; zoom 1: 140px, 40px; zoom 2: 140px, 40px"
+      },
+      {
+        "name": "Resizing from each of the eight handles changes the expected edges; one undo each (zoom 0.5, 1, 2)",
+        "pass": true,
+        "detail": "zoom 0.5: 8 handles; zoom 1: 8 handles; zoom 2: 8 handles"
+      },
+      {
+        "name": "Resizing and drawing snap their moving edges",
+        "pass": true,
+        "detail": "resize width 157 -> 160px; drawn frame left 40px"
+      },
+      {
+        "name": "Rotating, reordering, and moving a flex child into another container; undo and redo each (zoom 0.5, 1, 2)",
+        "pass": true,
+        "detail": "zoom 0.5: rotate 90, reorder F2,F1, F1 into Flex2; zoom 1: rotate 90, reorder F2,F1, F1 into Flex2; zoom 2: rotate 90, reorder F2,F1, F1 into Flex2"
+      },
+      {
+        "name": "Dragging a positioned frame onto another artboard reparents it with no visible jump; undo restores (zoom 0.5, 1, 2)",
+        "pass": true,
+        "detail": "zoom 0.5: into B, moved 0.00 px on drop; zoom 1: into B, moved 0.00 px on drop; zoom 2: into B, moved 0.00 px on drop"
+      },
+      {
+        "name": "Alt-drag leaves the original and adds a copy at the drop point; dragging two layers moves both (zoom 0.5, 1, 2)",
+        "pass": true,
+        "detail": "zoom 0.5: copy at 40px,150px; both moved 60; zoom 1: copy at 40px,150px; both moved 60; zoom 2: copy at 40px,150px; both moved 60"
+      },
+      {
+        "name": "Moving a layer snaps to equal spacing with its siblings and shows spacing markers",
+        "pass": true,
+        "detail": "P3 snapped to 360px with 2 spacing markers"
+      }
+    ]
   }
 }

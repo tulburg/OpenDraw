@@ -24,6 +24,7 @@ import {
   SIDES,
   type Side
 } from './handles'
+import { type Guide, guidesForBox, snapMove, snapValue, type SpacingMarker, unionRect } from './snap'
 import { Toolbar } from './Toolbar'
 import {
   containerOn,
@@ -64,15 +65,26 @@ type Offsets = Record<string, { left: number; top: number }>
 
 type Gesture = { pointerId: number; startX: number; startY: number; active: boolean } & (
   | { kind: 'pan'; origin: Viewport }
-  | { kind: 'move'; origins: Offsets }
-  | { kind: 'reorder'; id: string; parentId: string; axis: 'x' | 'y'; from: number; index: number }
-  | { kind: 'resize'; id: string; handle: Handle; origin: Box; positioned: boolean; angle: number }
+  | {
+      kind: 'move'
+      origins: Offsets
+      /** Snapping context, in canvas-relative screen px: the moved layers' bounds and what they snap to. */
+      box: Rect
+      siblings: Rect[]
+      parent: Rect | null
+      /** Alt + drag: the layers moving are copies made when the drag began. */
+      duplicated: boolean
+      /** The artboard under the pointer, when the layers would move into it. */
+      dropArtboard: string | null
+    }
+  | { kind: 'reorder'; id: string; parentId: string; target: string; axis: 'x' | 'y'; from: number; index: number }
+  | { kind: 'resize'; id: string; handle: Handle; origin: Box; positioned: boolean; angle: number; screen: Rect; targets: Rect[] }
   | { kind: 'rotate'; id: string; center: { x: number; y: number }; start: number; origin: number }
   | { kind: 'radius'; id: string; corner: Corner; origin: Record<Corner, number>; max: number; angle: number }
   | { kind: 'padding'; id: string; side: Side; origin: Record<Side, number>; angle: number }
   | { kind: 'gap'; id: string; axis: 'x' | 'y'; origin: number; angle: number }
   | { kind: 'marquee'; base: string[]; rect: Rect }
-  | { kind: 'draw'; tool: 'artboard' | 'frame' | 'text' | 'image'; parentId: string | null; rect: Rect }
+  | { kind: 'draw'; tool: 'artboard' | 'frame' | 'text' | 'image'; parentId: string | null; rect: Rect; start: { x: number; y: number }; targets: Rect[] }
 )
 
 /** Gestures that end by writing their preview styles, with their undo labels. */
@@ -358,6 +370,28 @@ export function Canvas({
     return { x: event.clientX - bounds.left, y: event.clientY - bounds.top }
   }
 
+  /** A layer's border box in canvas-relative screen px. */
+  const screenRectOf = (id: string): Rect | null => {
+    const el = nodeElement(ref.current!, id)
+    if (!el) return null
+    const outer = ref.current!.getBoundingClientRect()
+    const r = el.getBoundingClientRect()
+    return { x: r.left - outer.left, y: r.top - outer.top, width: r.width, height: r.height }
+  }
+  /** What layers in `parentId` (a node, or null for the page) snap to: their siblings and the parent. */
+  const snapTargets = (parentId: string | null, exclude: string[]) => {
+    const children = parentId ? (findNode(nodesRef.current, parentId)?.children ?? []) : nodesRef.current
+    const siblings = children.filter((c) => !exclude.includes(c.id)).flatMap((c) => screenRectOf(c.id) ?? [])
+    return { siblings, parent: parentId ? screenRectOf(parentId) : null }
+  }
+  const snapOff = (event: { metaKey: boolean; ctrlKey: boolean }) => event.metaKey || event.ctrlKey
+  /** The artboard whose bounds hold a canvas point. */
+  const artboardAt = (point: { x: number; y: number }) =>
+    [...nodesRef.current].reverse().find((n) => {
+      const r = screenRectOf(n.id)
+      return r && point.x >= r.x && point.x <= r.x + r.width && point.y >= r.y && point.y <= r.y + r.height
+    })?.id ?? null
+
   /** A canvas point (screen px) in a container's padding-box units, or in page units for null. */
   const toLocal = (parentId: string | null, point: { x: number; y: number }) => {
     const zoom = viewportRef.current.zoom
@@ -446,8 +480,12 @@ export function Canvas({
       // A frame drawn on empty canvas becomes an artboard; text needs a container.
       if (tool === 'text' && !container) return
       const drawTool = tool === 'frame' && !container ? 'artboard' : tool
+      const { siblings, parent } = snapTargets(drawTool === 'artboard' ? null : container, [])
+      const targets = parent ? [...siblings, parent] : siblings
       const point = canvasPoint(event)
-      setGesture({ ...base, kind: 'draw', tool: drawTool, parentId: container, rect: { ...point, width: 0, height: 0 } })
+      if (!snapOff(event)) Object.assign(point, { x: snapValue(point.x, targets, 'x'), y: snapValue(point.y, targets, 'y') })
+      const parentId = drawTool === 'artboard' ? null : container
+      setGesture({ ...base, kind: 'draw', tool: drawTool, parentId, rect: { ...point, width: 0, height: 0 }, start: point, targets })
       return
     }
 
@@ -460,7 +498,10 @@ export function Canvas({
         const origin = boxOf(id)
         const positioned = isPositionedNode(findNode(nodes, id))
         const handle = zone.dataset.handle as Handle
-        if (origin) setGesture({ ...base, kind: 'resize', id, handle, origin, positioned, angle: frame.angle })
+        const screen = screenRectOf(id)
+        const { siblings, parent } = snapTargets(parentOf(id), [id])
+        const targets = parent ? [...siblings, parent] : siblings
+        if (origin && screen) setGesture({ ...base, kind: 'resize', id, handle, origin, positioned, angle: frame.angle, screen, targets })
       } else if (zone.dataset.rotate) {
         const bounds = ref.current!.getBoundingClientRect()
         const center = { x: bounds.left + frame.cx, y: bounds.top + frame.cy }
@@ -495,7 +536,10 @@ export function Canvas({
     if (selected !== selection) store.select(selected)
 
     if (selected.every((id) => isPositionedNode(findNode(nodes, id)))) {
-      setGesture({ ...base, kind: 'move', origins: offsetsOf(selected) })
+      const box = unionRect(selected.flatMap((id) => screenRectOf(id) ?? []))
+      const { siblings, parent } = snapTargets(parentOf(selected[0]), selected)
+      if (!box) return
+      setGesture({ ...base, kind: 'move', origins: offsetsOf(selected), box, siblings, parent, duplicated: false, dropArtboard: null })
       return
     }
     const parentId = parentOf(picked)
@@ -503,7 +547,7 @@ export function Canvas({
       const parentStyle = getComputedStyle(nodeElement(ref.current!, parentId)!)
       const axis = parentStyle.display.includes('flex') && parentStyle.flexDirection.startsWith('row') ? 'x' : 'y'
       const from = findNode(nodes, parentId)!.children.findIndex((child) => child.id === picked)
-      setGesture({ ...base, kind: 'reorder', id: picked, parentId, axis, from, index: from })
+      setGesture({ ...base, kind: 'reorder', id: picked, parentId, target: parentId, axis, from, index: from })
     }
   }
 
@@ -526,12 +570,70 @@ export function Canvas({
       case 'pan':
         onViewportChange({ ...next.origin, x: next.origin.x + screenDx, y: next.origin.y + screenDy })
         break
-      case 'move':
-        setPreview(offsetStyles(next.origins, dx, dy))
+      case 'move': {
+        // Alt + drag moves copies, made once as the drag begins.
+        if (!gesture.active && event.altKey) {
+          const ids = Object.keys(next.origins)
+          const copies = store.transact('Duplicate', (tx) => {
+            const made = ids.map((id) => tx.duplicateNode(id).newId)
+            tx.select(made)
+            return made
+          })
+          const origins = next.origins
+          next = { ...next, duplicated: true, origins: Object.fromEntries(ids.map((id, i) => [copies[i], origins[id]])) }
+        }
+        let sdx = screenDx
+        let sdy = screenDy
+        // Shift keeps the drag on the axis it has moved most along.
+        const lock = event.shiftKey ? (Math.abs(sdx) >= Math.abs(sdy) ? 'y' : 'x') : null
+        if (lock === 'y') sdy = 0
+        if (lock === 'x') sdx = 0
+        if (snapOff(event)) {
+          setGuides([])
+          setSpacing([])
+        } else {
+          const snap = snapMove(next.box, sdx, sdy, next.siblings, next.parent, lock)
+          sdx = snap.dx
+          sdy = snap.dy
+          setGuides(snap.guides)
+          setSpacing(snap.spacing)
+        }
+        const offsets = offsetStyles(next.origins, sdx / viewport.zoom, sdy / viewport.zoom)
+        // Layers (not artboards) dragged over another artboard move into it on release.
+        // Read from the store: copies made by alt + drag are not rendered yet.
+        const { document: doc, pageId } = store.getState()
+        const pageNodes = doc.pages.find((p) => p.id === pageId)?.nodes ?? []
+        const ids = Object.keys(next.origins)
+        const layers = ids.every((id) => findNode(pageNodes, id)?.type !== 'artboard')
+        const over = layers ? artboardAt(canvasPoint(event)) : null
+        const home = layers ? pageNodes.find((a) => findNode(a.children, ids[0]))?.id : null
+        next = { ...next, dropArtboard: over && over !== home ? over : null }
+        // The home artboard stops clipping while layers are dragged, so they stay visible outside it.
+        setPreview(home ? { ...offsets, [home]: { overflow: 'visible' } } : offsets)
         break
+      }
       case 'resize': {
         // Along the layer's own axes, so rotated layers resize the way they are drawn.
-        const local = rotateVector({ x: dx, y: dy }, -next.angle)
+        let rdx = screenDx
+        let rdy = screenDy
+        const snapping = !next.angle && !event.altKey && !event.shiftKey && !snapOff(event)
+        if (snapping) {
+          const s = next.screen
+          if (next.handle.includes('e')) rdx = snapValue(s.x + s.width + rdx, next.targets, 'x') - s.x - s.width
+          if (next.handle.includes('w')) rdx = snapValue(s.x + rdx, next.targets, 'x') - s.x
+          if (next.handle.includes('s')) rdy = snapValue(s.y + s.height + rdy, next.targets, 'y') - s.y - s.height
+          if (next.handle.includes('n')) rdy = snapValue(s.y + rdy, next.targets, 'y') - s.y
+          const sx = next.handle.includes('e') ? 1 : next.handle.includes('w') ? -1 : 0
+          const sy = next.handle.includes('s') ? 1 : next.handle.includes('n') ? -1 : 0
+          const box = {
+            x: sx === -1 ? s.x + rdx : s.x,
+            y: sy === -1 ? s.y + rdy : s.y,
+            width: s.width + sx * rdx,
+            height: s.height + sy * rdy
+          }
+          setGuides(guidesForBox(box, next.targets).filter((g) => (g.x1 === g.x2 ? sx !== 0 : sy !== 0)))
+        } else setGuides([])
+        const local = rotateVector({ x: rdx / viewport.zoom, y: rdy / viewport.zoom }, -next.angle)
         const box = resized(next.origin, next.handle, local.x, local.y, event.shiftKey, event.altKey)
         if (next.angle) {
           // CSS rotates around the center: shift the box so the opposite edge stays put on screen.
@@ -591,11 +693,24 @@ export function Canvas({
         break
       }
       case 'reorder': {
+        // The flex container under the pointer takes the layer; it can be another container.
+        const draggedId = next.id
+        const under = pathAt(document.elementFromPoint(event.clientX, event.clientY))
+        const target =
+          [...under].reverse().find((id) => {
+            if (id === draggedId) return false
+            const n = findNode(nodes, id)
+            const el = nodeElement(ref.current!, id)
+            return (n?.type === 'frame' || n?.type === 'artboard') && !!el && getComputedStyle(el).display.includes('flex')
+          }) ?? next.parentId
+        if (target !== next.target) {
+          const style = getComputedStyle(nodeElement(ref.current!, target)!)
+          next = { ...next, target, axis: style.flexDirection.startsWith('row') ? 'x' : 'y' }
+        }
         // The dragged layer goes before the first sibling whose middle is past the pointer.
-        const parentEl = nodeElement(ref.current!, next.parentId)!
+        const parentEl = nodeElement(ref.current!, next.target)!
         const bounds = ref.current!.getBoundingClientRect()
         const x = next.axis === 'x'
-        const draggedId = next.id
         const rects = [...parentEl.children]
           .filter((el): el is HTMLElement => el instanceof HTMLElement && !!el.dataset.nodeId && el.dataset.nodeId !== draggedId)
           .map((el) => el.getBoundingClientRect())
@@ -615,12 +730,15 @@ export function Canvas({
             : { x: parentRect.left - bounds.left, y: edge - bounds.top - 1, width: parentRect.width, height: 2 }
         )
         next = { ...next, index }
-        setPreview({ [next.id]: { transform: `translate(${dx}px, ${dy}px)`, opacity: 0.6, zIndex: 1 } })
+        setPreview({ [next.id]: { transform: `translate(${dx}px, ${dy}px)`, opacity: 0.6, zIndex: 1, pointerEvents: 'none' } })
         break
       }
       case 'draw': {
-        const start = canvasPoint({ clientX: next.startX, clientY: next.startY })
-        next = { ...next, rect: drawnRect(start, canvasPoint(event), event.shiftKey, event.altKey) }
+        const point = canvasPoint(event)
+        if (!snapOff(event)) Object.assign(point, { x: snapValue(point.x, next.targets, 'x'), y: snapValue(point.y, next.targets, 'y') })
+        const rect = drawnRect(next.start, point, event.shiftKey, event.altKey)
+        setGuides(snapOff(event) ? [] : guidesForBox(rect, next.targets))
+        next = { ...next, rect }
         break
       }
       case 'marquee': {
@@ -658,17 +776,41 @@ export function Canvas({
     setPreview({})
     setInsertLine(null)
     setHandleLabel(null)
+    setGuides([])
+    setSpacing([])
     if (finished.kind === 'draw') return finishDraw(finished)
     if (!finished.active) return
     if (STYLE_GESTURES[finished.kind]) {
-      const entries = Object.entries(styles)
+      // Only the dragged layers' styles are written (a move also previews its artboard unclipped).
+      const entries = Object.entries(styles).filter(([id]) => finished.kind !== 'move' || id in finished.origins)
       if (entries.length === 0) return
+      // Layers dropped on another artboard move into it where they are on screen. The DOM still
+      // shows the preview here, so positions are read before anything changes.
+      const drop = finished.kind === 'move' ? finished.dropArtboard : null
+      const dropped = drop
+        ? entries.map(([id]) => {
+            const el = nodeElement(ref.current!, id)!
+            const frame = frameOf(el, ref.current!.getBoundingClientRect(), viewportRef.current.zoom)
+            const at = toLocal(drop, { x: frame.cx - frame.width / 2, y: frame.cy - frame.height / 2 })
+            return { id, left: px(at.x), top: px(at.y) }
+          })
+        : []
       // Previews mark removed properties as undefined; the document removes them with null.
-      store.transact(STYLE_GESTURES[finished.kind]!, (tx) => {
-        for (const [id, update] of entries) {
-          tx.updateStyles([id], Object.fromEntries(Object.entries(update).map(([k, v]) => [k, v ?? null])))
-        }
-      })
+      store.transact(
+        STYLE_GESTURES[finished.kind]!,
+        (tx) => {
+          for (const [id, update] of entries) {
+            tx.updateStyles([id], Object.fromEntries(Object.entries(update).map(([k, v]) => [k, v ?? null])))
+          }
+          for (const { id, left, top } of dropped) {
+            tx.moveNode(id, drop!)
+            tx.updateStyles([id], { left, top })
+          }
+        },
+        finished.kind === 'move' && finished.duplicated
+      )
+    } else if (finished.kind === 'reorder' && finished.target !== finished.parentId) {
+      store.transact('Move into', (tx) => tx.moveNode(finished.id, finished.target, finished.index))
     } else if (finished.kind === 'reorder' && finished.index !== finished.from) {
       store.transact('Reorder', (tx) => tx.moveNode(finished.id, finished.parentId, finished.index))
     }
@@ -694,6 +836,8 @@ export function Canvas({
   const [selectedFrames, setSelectedFrames] = useState<{ id: string; frame: Frame }[]>([])
   const [hoverFrame, setHoverFrame] = useState<Frame | null>(null)
   const [handleInfo, setHandleInfo] = useState<HandleInfo | null>(null)
+  const [guides, setGuides] = useState<Guide[]>([])
+  const [spacing, setSpacing] = useState<SpacingMarker[]>([])
   const [handleLabel, setHandleLabel] = useState<{ x: number; y: number; text: string } | null>(null)
   const [workingRects, setWorkingRects] = useState<{ id: string; rect: Rect }[]>([])
   useLayoutEffect(() => {
@@ -833,6 +977,25 @@ export function Canvas({
             {Math.round(single.frame.width / viewport.zoom)} x {Math.round(single.frame.height / viewport.zoom)}
           </div>
         )}
+        {guides.map((g, i) => (
+          <div
+            key={`g${i}`}
+            className="snap-guide"
+            style={{ left: Math.min(g.x1, g.x2), top: Math.min(g.y1, g.y2), width: Math.max(1, Math.abs(g.x2 - g.x1)), height: Math.max(1, Math.abs(g.y2 - g.y1)) }}
+          />
+        ))}
+        {spacing.map((g, i) => (
+          <div
+            key={`s${i}`}
+            className="spacing-marker"
+            data-vertical={g.x1 === g.x2 || undefined}
+            style={{ left: Math.min(g.x1, g.x2), top: Math.min(g.y1, g.y2), width: Math.max(1, Math.abs(g.x2 - g.x1)), height: Math.max(1, Math.abs(g.y2 - g.y1)) }}
+          />
+        ))}
+        {gesture?.kind === 'move' && gesture.dropArtboard && (() => {
+          const r = screenRectOf(gesture.dropArtboard)
+          return r && <div className="drop-target" style={{ left: r.x, top: r.y, width: r.width, height: r.height }} />
+        })()}
         {handleLabel && (
           <div className="handle-label" style={{ left: handleLabel.x + 14, top: handleLabel.y + 14 }}>
             {handleLabel.text}
