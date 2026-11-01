@@ -577,3 +577,56 @@ body {
   user-select: text;
   -webkit-user-select: text;
 }
+
+.text-editing:empty {
+  min-width: 1px;
+  min-height: 1lh;
+}
+
+/* Drawing tools (S-9). */
+.canvas[data-tool='artboard'],
+.canvas[data-tool='frame'],
+.canvas[data-tool='image'] {
+  cursor: crosshair;
+}
+.canvas[data-tool='text'] {
+  cursor: text;
+}
+.draw-rect {
+  position: absolute;
+  border: 1px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  pointer-events: none;
+}
+.toolbar {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 10px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  z-index: 3;
+  cursor: default;
+}
+.tool-button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text);
+}
+.tool-button:hover {
+  background: var(--row-hover);
+}
+.tool-button[data-active] {
+  background: var(--accent);
+  color: #ffffff;
+}

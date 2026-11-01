@@ -303,5 +303,41 @@
         "detail": "\"Plain words\\nmore text\", pasted run {\"fontWeight\":\"bold\",\"color\":\"rgb(255, 0, 0)\"}"
       }
     ]
+  },
+  "S-9": {
+    "at": "2026-11-01T20:38:58.412Z",
+    "running": false,
+    "results": [
+      {
+        "name": "V, H, A, F, T, I switch the highlighted tool; Escape returns to Select",
+        "pass": true,
+        "detail": "hand, artboard, frame, text, image, select; Escape back to select; hover shows \"Frame (F)\""
+      },
+      {
+        "name": "A 300 x 200 frame drawn in a non-flex artboard is positioned where drawn, at zoom 0.5 and 2; one undo removes it",
+        "pass": true,
+        "detail": "zoom 0.5: left 50px, top 50px, 300 x 200; zoom 2: left 360px, top 60px, 300 x 200"
+      },
+      {
+        "name": "A frame drawn in a flex column is appended as the last child with the drawn size and no position",
+        "pass": true,
+        "detail": "appended after First: {\"width\":\"120px\",\"height\":\"80px\",\"backgroundColor\":\"#e5e5e5\"}"
+      },
+      {
+        "name": "Text tool: click, type \"Hello\", Escape saves the text; click and Escape with nothing typed changes nothing",
+        "pass": true,
+        "detail": "\"Hello\" saved; one undo removes it; an empty click-and-Escape leaves the document and history unchanged"
+      },
+      {
+        "name": "The image tool places a PNG at its natural size and an SVG as an SVG layer",
+        "pass": true,
+        "detail": "PNG 40px x 30px at 20, 20; SVG layer \"mark\" 24px x 24px"
+      },
+      {
+        "name": "An agent's get_jsx on the artboard shows each drawn layer",
+        "pass": true,
+        "detail": "get_jsx lists the image, SVG and frame; a drawn artboard 79px x 53px shows in get_tree_summary"
+      }
+    ]
   }
 }

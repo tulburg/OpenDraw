@@ -9,11 +9,13 @@ import { camelProperty, parsePastedText } from '../mcp/html'
 
 export interface Editing {
   id: string | null
+  /** The layer was just drawn with the text tool: its first edit joins that undo step. */
+  fresh: boolean
   store: DocumentStore | null
   done: () => void
 }
 
-export const EditingContext = createContext<Editing>({ id: null, store: null, done: () => {} })
+export const EditingContext = createContext<Editing>({ id: null, fresh: false, store: null, done: () => {} })
 
 /** What formatting tags mean when the browser writes them instead of inline styles. */
 const TAG_STYLES: Record<string, CSSStyle> = {
@@ -77,14 +79,19 @@ function readSpans(root: HTMLElement): TextSpan[] {
 }
 
 /** Writes the edited runs to the document as one undo step; no step when nothing changed. */
-export function commitText(store: DocumentStore, node: DesignNode, spans: TextSpan[]) {
+export function commitText(store: DocumentStore, node: DesignNode, spans: TextSpan[], merge = false) {
   const normalized = normalizeSpans(spans)
   const text = plainText(spans)
   if (text === (node.text ?? '') && JSON.stringify(normalized) === JSON.stringify(node.spans)) return
-  store.transact('Edit text', (tx) => {
-    tx.setRichText(node.id, spans)
-    if (/\n| {2}/.test(text) && !tx.node(node.id).style.whiteSpace) tx.updateStyles([node.id], { whiteSpace: 'pre-wrap' })
-  })
+  store.transact(
+    'Edit text',
+    (tx) => {
+      tx.setRichText(node.id, spans)
+      if (/\n| {2}/.test(text) && !tx.node(node.id).style.whiteSpace) tx.updateStyles([node.id], { whiteSpace: 'pre-wrap' })
+      if (merge) tx.rename(node.id, text.split('\n')[0].slice(0, 50) || node.name)
+    },
+    merge
+  )
 }
 
 export function TextEditor({ node, style, editing }: { node: DesignNode; style: CSSProperties; editing: Editing }) {
@@ -108,7 +115,10 @@ export function TextEditor({ node, style, editing }: { node: DesignNode; style: 
   const finish = () => {
     if (finished.current) return
     finished.current = true
-    if (editing.store) commitText(editing.store, node, readSpans(ref.current!))
+    const spans = readSpans(ref.current!)
+    // A drawn text layer left empty is taken back, with no undo step.
+    if (editing.fresh && !plainText(spans).trim()) editing.store?.dropLastStep()
+    else if (editing.store) commitText(editing.store, node, spans, editing.fresh)
     editing.done()
   }
 

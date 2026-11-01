@@ -213,9 +213,10 @@ export class DocumentStore {
 
   /**
    * Runs `edit` as one undo step. If it throws, nothing changes and the error is rethrown.
-   * Edits that leave the document unchanged add no undo step.
+   * Edits that leave the document unchanged add no undo step. With `merge`, the edit joins the last
+   * undo step instead of adding one (typing into a text layer that was just drawn, say).
    */
-  transact<T>(label: string, edit: (tx: Transaction) => T): T {
+  transact<T>(label: string, edit: (tx: Transaction) => T, merge = false): T {
     const tx = new Transaction(this.state.document)
     const result = edit(tx)
     const selection = tx.selectionAfter(this.state.selection)
@@ -223,15 +224,22 @@ export class DocumentStore {
       if (selection.join() !== this.state.selection.join()) this.set({ selection }, 'selection')
       return result
     }
+    const last = merge ? this.undoStack.pop() : undefined
     this.undoStack.push({
-      label,
-      before: { document: this.state.document, selection: this.state.selection },
+      label: last?.label ?? label,
+      before: last?.before ?? { document: this.state.document, selection: this.state.selection },
       after: { document: tx.document, selection }
     })
     if (this.undoStack.length > MAX_UNDO) this.undoStack.shift()
     this.redoStack = []
     this.set({ document: tx.document, selection }, 'document')
     return result
+  }
+
+  /** Takes back the last undo step for good: it cannot be redone (a drawn text layer left empty). */
+  dropLastStep() {
+    const entry = this.undoStack.pop()
+    if (entry) this.set(entry.before, 'document')
   }
 
   select(ids: string[]) {

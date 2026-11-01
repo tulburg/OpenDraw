@@ -7,6 +7,18 @@ import { CLIPBOARD_TYPE, copySelection, deleteSelection, duplicateSelection, pas
 import { NodeView } from './NodeView'
 import { type Preview, PreviewContext } from './preview'
 import { type Editing, EditingContext } from './TextEditor'
+import { Toolbar } from './Toolbar'
+import {
+  containerOn,
+  drawArtboard,
+  drawFrame,
+  drawText,
+  isPlaceableImage,
+  type Placement,
+  placeImage,
+  type Tool,
+  TOOL_BY_KEY
+} from './tools'
 import { deeper, nodeElement, parentIdOf, pathAt, pickAtDepth } from './selection'
 import { nodeRect, type Rect, toScreen, zoomAt } from './viewport'
 
@@ -41,6 +53,7 @@ type Gesture = { pointerId: number; startX: number; startY: number; active: bool
   | { kind: 'reorder'; id: string; parentId: string; axis: 'x' | 'y'; from: number; index: number }
   | { kind: 'resize'; id: string; handle: Handle; origin: Box; positioned: boolean }
   | { kind: 'marquee'; base: string[]; rect: Rect }
+  | { kind: 'draw'; tool: 'artboard' | 'frame' | 'text' | 'image'; parentId: string | null; rect: Rect }
 )
 
 const WHEEL_ZOOM_SPEED = 0.01
@@ -119,13 +132,27 @@ export function Canvas({
     setPreviewState(next)
   }, [])
   const [hoveredId, setHoveredId] = useState<string | null>(null)
-  // The text layer being edited in place, if any.
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const editing = useMemo<Editing>(() => ({ id: editingId, store, done: () => setEditingId(null) }), [editingId, store])
+  // The text layer being edited in place, if any; `fresh` when it was just drawn.
+  const [editingState, setEditing] = useState<{ id: string; fresh: boolean } | null>(null)
+  const editingId = editingState?.id ?? null
+  const editing = useMemo<Editing>(
+    () => ({ id: editingId, fresh: !!editingState?.fresh, store, done: () => setEditing(null) }),
+    [editingId, editingState, store]
+  )
   useEffect(() => {
-    if (editingId && !(selection.length === 1 && selection[0] === editingId)) setEditingId(null)
+    if (editingId && !(selection.length === 1 && selection[0] === editingId)) setEditing(null)
   }, [selection, editingId])
   const [insertLine, setInsertLine] = useState<Rect | null>(null)
+  const [tool, setToolState] = useState<Tool>('select')
+  const toolRef = useRef<Tool>('select')
+  const setTool = useCallback((next: Tool) => {
+    toolRef.current = next
+    setToolState(next)
+  }, [])
+  // Keys held down right now: holding a tool's key while drawing keeps that tool afterwards.
+  const heldKeys = useRef(new Set<string>())
+  const imageInput = useRef<HTMLInputElement>(null)
+  const pendingImage = useRef<{ placement: Placement; containerSize: { width: number; height: number } | null } | null>(null)
   // Handlers registered once read the latest values from refs.
   const viewportRef = useRef(viewport)
   viewportRef.current = viewport
@@ -218,6 +245,16 @@ export function Canvas({
         setSpaceHeld(true)
         return
       }
+      const toolKey = TOOL_BY_KEY[event.key.toLowerCase()]
+      if (toolKey && !mod && !event.altKey && !event.repeat) {
+        heldKeys.current.add(event.key.toLowerCase())
+        setTool(toolKey)
+        return
+      }
+      if (event.key === 'Escape' && toolRef.current !== 'select') {
+        setTool('select')
+        return
+      }
       const arrow = ARROWS[event.key]
       if (arrow && !mod) {
         if (selected.length === 0 || !selected.every((id) => isPositionedNode(findNode(nodesRef.current, id)))) return
@@ -248,9 +285,13 @@ export function Canvas({
       }
     }
     const up = (event: KeyboardEvent) => {
+      heldKeys.current.delete(event.key.toLowerCase())
       if (event.code === 'Space') setSpaceHeld(false)
     }
-    const blur = () => setSpaceHeld(false)
+    const blur = () => {
+      heldKeys.current.clear()
+      setSpaceHeld(false)
+    }
     // Copy, cut and paste arrive as clipboard events from the keyboard and from the Edit menu alike.
     const onCopy = (event: ClipboardEvent) => {
       if (isTyping(document.activeElement)) return
@@ -281,11 +322,70 @@ export function Canvas({
       document.removeEventListener('paste', onPaste)
     }
     // offsetsOf reads the DOM through refs, so it does not need to be a dependency.
-  }, [store, commitNudge, measure, setPreview])
+  }, [store, commitNudge, measure, setPreview, setTool])
 
   const canvasPoint = (event: { clientX: number; clientY: number }) => {
     const bounds = ref.current!.getBoundingClientRect()
     return { x: event.clientX - bounds.left, y: event.clientY - bounds.top }
+  }
+
+  /** A canvas point (screen px) in a container's padding-box units, or in page units for null. */
+  const toLocal = (parentId: string | null, point: { x: number; y: number }) => {
+    const zoom = viewportRef.current.zoom
+    if (parentId === null) return { x: (point.x - viewportRef.current.x) / zoom, y: (point.y - viewportRef.current.y) / zoom }
+    const el = nodeElement(ref.current!, parentId)!
+    const bounds = ref.current!.getBoundingClientRect()
+    const r = el.getBoundingClientRect()
+    return { x: (point.x + bounds.left - r.left) / zoom - el.clientLeft, y: (point.y + bounds.top - r.top) / zoom - el.clientTop }
+  }
+
+  /** Where a drawn rectangle (screen px, canvas-relative) lands in its container. */
+  const placementFor = (parentId: string | null, rect: Rect, clicked: boolean): Placement => {
+    const zoom = viewportRef.current.zoom
+    const origin = toLocal(parentId, rect)
+    const el = parentId ? nodeElement(ref.current!, parentId) : null
+    const flex = !!el && getComputedStyle(el).display.includes('flex')
+    return { parentId, flex, clicked, box: { left: origin.x, top: origin.y, width: rect.width / zoom, height: rect.height / zoom } }
+  }
+
+  /** The rectangle from the press to the pointer: shift keeps a square, alt draws from the center. */
+  const drawnRect = (start: { x: number; y: number }, point: { x: number; y: number }, square: boolean, fromCenter: boolean): Rect => {
+    let dx = point.x - start.x
+    let dy = point.y - start.y
+    if (square) {
+      const side = Math.max(Math.abs(dx), Math.abs(dy))
+      dx = (dx < 0 ? -1 : 1) * side
+      dy = (dy < 0 ? -1 : 1) * side
+    }
+    if (fromCenter) return { x: start.x - Math.abs(dx), y: start.y - Math.abs(dy), width: Math.abs(dx) * 2, height: Math.abs(dy) * 2 }
+    return { x: Math.min(start.x, start.x + dx), y: Math.min(start.y, start.y + dy), width: Math.abs(dx), height: Math.abs(dy) }
+  }
+
+  const containerSizeOf = (parentId: string | null) => {
+    const el = parentId ? nodeElement(ref.current!, parentId) : null
+    return el ? { width: el.clientWidth, height: el.clientHeight } : null
+  }
+
+  const addImage = async (file: File, placement: Placement, containerSize: { width: number; height: number } | null) => {
+    if (!isPlaceableImage(file)) return
+    await placeImage(store, file, placement, containerSize)
+  }
+
+  /** Creates the drawn layer, selects it, and goes back to Select unless the tool's key is held. */
+  const finishDraw = (draw: Extract<Gesture, { kind: 'draw' }>) => {
+    const clicked = !draw.active
+    const placement = placementFor(draw.parentId, draw.rect, clicked)
+    if (draw.tool === 'image') {
+      pendingImage.current = { placement, containerSize: containerSizeOf(draw.parentId) }
+      imageInput.current?.click()
+    } else if (draw.tool === 'artboard') drawArtboard(store, placement)
+    else if (draw.tool === 'frame') drawFrame(store, placement)
+    else {
+      const id = drawText(store, placement)
+      setEditing({ id, fresh: true })
+    }
+    const key = Object.entries(TOOL_BY_KEY).find(([, t]) => t === draw.tool)?.[0]
+    if (!key || !heldKeys.current.has(key)) setTool('select')
   }
 
   /** The layer a press or hover at this target picks: by depth, or the deepest with cmd/ctrl. */
@@ -302,7 +402,7 @@ export function Canvas({
     if ((event.target as HTMLElement).closest('[data-editing]')) return
     const base = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, active: false }
     commitNudge()
-    if (event.button === 1 || (event.button === 0 && spaceHeld)) {
+    if (event.button === 1 || (event.button === 0 && (spaceHeld || tool === 'hand'))) {
       event.preventDefault()
       ref.current!.setPointerCapture(event.pointerId)
       setGesture({ ...base, kind: 'pan', origin: viewport, active: true })
@@ -311,6 +411,16 @@ export function Canvas({
     if (event.button !== 0) return
     ref.current!.setPointerCapture(event.pointerId)
     const target = event.target as HTMLElement
+
+    if (tool === 'artboard' || tool === 'frame' || tool === 'text' || tool === 'image') {
+      const container = tool === 'artboard' ? null : containerOn(pathAt(target), nodes)
+      // A frame drawn on empty canvas becomes an artboard; text needs a container.
+      if (tool === 'text' && !container) return
+      const drawTool = tool === 'frame' && !container ? 'artboard' : tool
+      const point = canvasPoint(event)
+      setGesture({ ...base, kind: 'draw', tool: drawTool, parentId: container, rect: { ...point, width: 0, height: 0 } })
+      return
+    }
 
     const handle = target.closest<HTMLElement>('[data-handle]')?.dataset.handle as Handle | undefined
     if (handle && selection.length === 1) {
@@ -404,6 +514,11 @@ export function Canvas({
         setPreview({ [next.id]: { transform: `translate(${dx}px, ${dy}px)`, opacity: 0.6, zIndex: 1 } })
         break
       }
+      case 'draw': {
+        const start = canvasPoint({ clientX: next.startX, clientY: next.startY })
+        next = { ...next, rect: drawnRect(start, canvasPoint(event), event.shiftKey, event.altKey) }
+        break
+      }
       case 'marquee': {
         const point = canvasPoint(event)
         const start = canvasPoint({ clientX: next.startX, clientY: next.startY })
@@ -438,6 +553,7 @@ export function Canvas({
     setGesture(null)
     setPreview({})
     setInsertLine(null)
+    if (finished.kind === 'draw') return finishDraw(finished)
     if (!finished.active) return
     if (finished.kind === 'move' || finished.kind === 'resize') {
       const entries = Object.entries(styles)
@@ -462,7 +578,7 @@ export function Canvas({
     const target = selected.length === 1 && path.includes(selected[0]) && isText(selected[0]) ? selected[0] : deeper(path, selected)
     if (!target) return
     store.select([target])
-    if (isText(target)) setEditingId(target)
+    if (isText(target)) setEditing({ id: target, fresh: false })
   }
 
   // Outlines are measured from the DOM, so layers laid out by flexbox get accurate bounds.
@@ -501,7 +617,8 @@ export function Canvas({
     <div
       ref={ref}
       className="canvas"
-      data-panning={gesture?.kind === 'pan' ? 'active' : spaceHeld ? 'ready' : undefined}
+      data-panning={gesture?.kind === 'pan' ? 'active' : spaceHeld || tool === 'hand' ? 'ready' : undefined}
+      data-tool={tool}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -509,6 +626,17 @@ export function Canvas({
       onPointerLeave={() => setHoveredId(null)}
       onDoubleClick={onDoubleClick}
       onAuxClick={(event) => event.preventDefault()}
+      onDragOver={(event) => {
+        if (event.dataTransfer.types.includes('Files')) event.preventDefault()
+      }}
+      onDrop={(event) => {
+        const files = [...event.dataTransfer.files].filter(isPlaceableImage)
+        if (files.length === 0) return
+        event.preventDefault()
+        const parentId = containerOn(pathAt(document.elementFromPoint(event.clientX, event.clientY)), nodes)
+        const point = canvasPoint(event)
+        void addImage(files[0], placementFor(parentId, { ...point, width: 0, height: 0 }, true), containerSizeOf(parentId))
+      }}
     >
       <div
         className="canvas-world"
@@ -588,6 +716,17 @@ export function Canvas({
             style={{ left: insertLine.x, top: insertLine.y, width: insertLine.width, height: insertLine.height }}
           />
         )}
+        {gesture?.kind === 'draw' && gesture.active && (
+          <>
+            <div
+              className="draw-rect"
+              style={{ left: gesture.rect.x, top: gesture.rect.y, width: gesture.rect.width, height: gesture.rect.height }}
+            />
+            <div className="size-label" style={{ left: gesture.rect.x + gesture.rect.width / 2, top: gesture.rect.y + gesture.rect.height + 8 }}>
+              {Math.round(gesture.rect.width / viewport.zoom)} x {Math.round(gesture.rect.height / viewport.zoom)}
+            </div>
+          </>
+        )}
         {gesture?.kind === 'marquee' && gesture.active && (
           <div
             className="marquee"
@@ -595,6 +734,21 @@ export function Canvas({
           />
         )}
       </div>
+      <Toolbar tool={tool} onSelect={setTool} />
+      <input
+        ref={imageInput}
+        type="file"
+        accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml"
+        data-image-input=""
+        hidden
+        onChange={(event) => {
+          const file = event.target.files?.[0]
+          const pending = pendingImage.current
+          event.target.value = ''
+          pendingImage.current = null
+          if (file && pending) void addImage(file, pending.placement, pending.containerSize)
+        }}
+      />
     </div>
   )
 }
