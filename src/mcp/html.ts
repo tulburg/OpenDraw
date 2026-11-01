@@ -1,8 +1,9 @@
 // HTML with inline CSS to design nodes, following Paper's rules (S-5 Req 2): flex, padding and gap
 // for layout, absolute positioning for decoration, layer-name for layer names, <img>, <svg> and <pre>.
 // Margins, grid, inline display and tables are dropped, and every drop is reported back.
-import { type CSSStyle, type DesignNode, newId } from '../../shared/document'
+import { type CSSStyle, type DesignNode, newId, type TextSpan } from '../../shared/document'
 import { safeImageSrc, sanitizeSvg } from '../document/media'
+import { normalizeSpans, plainText, spanStyle } from '../document/richtext'
 import { applyStyleUpdate } from '../document/styles'
 
 export interface ParsedHTML {
@@ -142,22 +143,58 @@ function isFlexContainer(el: Element): boolean {
   )
 }
 
-/** Text as a browser shows it: whitespace collapsed (unless preserved), <br> as a line break. */
-function runText(el: Element, preserve: boolean): string {
-  let text = ''
-  const visit = (node: Node) => {
-    if (node.nodeType === Node.TEXT_NODE) text += node.textContent ?? ''
-    else if ((node as Element).localName === 'br') text += '\n'
-    else for (const child of node.childNodes) visit(child)
+/**
+ * The runs of text inside `el` as a browser shows them: whitespace collapsed across runs (unless
+ * preserved), <br> as a line break, and each inline element's text styles on its run. Properties a
+ * run cannot have go to `drop`.
+ */
+function runSpans(el: Element, preserve: boolean, drop: (line: string) => void): TextSpan[] {
+  const spans: TextSpan[] = []
+  const push = (text: string, style: CSSStyle) => {
+    if (!preserve) {
+      const before = spans.map((span) => span.text).join('')
+      text = text.replace(/[ \t\r\n\f]+/g, ' ')
+      if (text.startsWith(' ') && (before === '' || /[ \n]$/.test(before))) text = text.slice(1)
+    }
+    if (text) spans.push({ text, style })
   }
-  visit(el)
-  if (preserve) return text.replace(/^\n/, '')
-  return text
-    .split('\n')
-    .map((line) => line.replace(/[ \t\r\f]+/g, ' '))
-    .join('\n')
-    .replace(/ *\n */g, '\n')
-    .trim()
+  const lineBreak = (style: CSSStyle) => {
+    if (!preserve) {
+      const last = spans[spans.length - 1]
+      if (last) last.text = last.text.replace(/ +$/, '')
+    }
+    spans.push({ text: '\n', style })
+  }
+  const visit = (node: Node, style: CSSStyle) => {
+    if (node.nodeType === Node.TEXT_NODE) return push(node.textContent ?? '', style)
+    if (node.nodeType !== Node.ELEMENT_NODE) return
+    const element = node as Element
+    if (element.localName === 'br') return lineBreak(style)
+    const own: CSSStyle = spanStyle(TAG_DEFAULTS[element.localName] ?? {}).style
+    const inline: CSSStyle = {}
+    for (const [property, value] of parseStyleAttribute(element.getAttribute('style') ?? '')) {
+      inline[camelProperty(property)] = value
+    }
+    const { style: kept, dropped } = spanStyle(inline)
+    for (const [property, reason] of Object.entries(dropped)) drop(`${property} on ${describe(element)}: ${reason}`)
+    const next = { ...style, ...own, ...kept }
+    for (const child of element.childNodes) visit(child, next)
+  }
+  for (const child of el.childNodes) visit(child, {})
+  if (preserve) {
+    if (spans[0]?.text.startsWith('\n')) spans[0].text = spans[0].text.slice(1)
+  } else {
+    while (spans.length > 0 && !/\S/.test(spans[spans.length - 1].text) && spans[spans.length - 1].text !== '\n') spans.pop()
+    const last = spans[spans.length - 1]
+    if (last) last.text = last.text.replace(/[ \n]+$/, '')
+  }
+  return spans
+}
+
+/** A text node's `text`, plus `spans` when part of it is formatted. */
+function richText(spans: TextSpan[]): Pick<DesignNode, 'text' | 'spans'> {
+  const normalized = normalizeSpans(spans)
+  return normalized ? { text: plainText(spans), spans: normalized } : { text: plainText(spans) }
 }
 
 class Converter {
@@ -221,8 +258,9 @@ class Converter {
 
     if (tag === 'pre') {
       const style = this.style(el, 'text')
-      const text = runText(el, true)
-      return { id: newId(), type: 'text', name: truncate(layerName ?? text.split('\n')[0] ?? 'Code'), style, children: [], text }
+      const content = richText(runSpans(el, true, (line) => this.dropped.push(line)))
+      const name = layerName ?? content.text?.split('\n')[0] ?? 'Code'
+      return { id: newId(), type: 'text', name: truncate(name), style, children: [], ...content }
     }
 
     // A flex container lays its children out as separate items, even when they are all text.
@@ -236,7 +274,7 @@ class Converter {
   /**
    * One text node for an element holding a run of text. When the text sits in a single inline child
    * (a <span> or <a> inside a <button>, say), that child's styles apply to the whole node; formatting
-   * on part of the text is flattened and reported, since rich text is not supported yet.
+   * on part of the text becomes spans.
    */
   textNode(el: Element): DesignNode {
     let style = this.style(el, 'text')
@@ -248,14 +286,11 @@ class Converter {
       inner = elements[0]
       style = { ...style, ...this.style(inner, 'text', style) }
     }
-    const formatted = inner.querySelector(':scope *:not(br)')
-    if (formatted) {
-      this.dropped.push(`formatting inside ${describe(el)}: rich text is not supported yet; the text was kept as plain text`)
-    }
-    const text = runText(inner, false)
+    const content = richText(runSpans(inner, false, (line) => this.dropped.push(line)))
+    const text = content.text ?? ''
     if (text.includes('\n') && !style.whiteSpace) style = { ...style, whiteSpace: 'pre-line' }
     const name = el.getAttribute('layer-name') ?? text.split('\n')[0]
-    return { id: newId(), type: 'text', name: truncate(name), style, children: [], text }
+    return { id: newId(), type: 'text', name: truncate(name), style, children: [], ...content }
   }
 
   /** width and height attributes on <img> and <svg> become styles unless the style sets them. */
@@ -280,10 +315,17 @@ export function parseHTML(html: string): ParsedHTML {
 
 /**
  * Text for set_text_content: whitespace kept as written (pre-wrap, as Paper parses it), <br> as a
- * line break, inline formatting flattened.
+ * line break, inline formatting as spans. `dropped` lists run properties that were left out.
  */
-export function parseInlineText(html: string): { text: string; flattened: boolean } {
+export function parseInlineText(html: string): { text: string; spans: TextSpan[]; dropped: string[] } {
   const doc = new DOMParser().parseFromString(`<body>${html}</body>`, 'text/html')
-  const flattened = doc.body.querySelector('*:not(br)') !== null
-  return { text: runText(doc.body, true), flattened }
+  const dropped: string[] = []
+  const spans = runSpans(doc.body, true, (line) => dropped.push(line))
+  return { text: plainText(spans), spans, dropped }
+}
+
+/** Formatted runs from pasted HTML, laid out as a browser shows it (whitespace collapsed). */
+export function parsePastedText(html: string): TextSpan[] {
+  const doc = new DOMParser().parseFromString(html, 'text/html')
+  return runSpans(doc.body, false, () => {})
 }

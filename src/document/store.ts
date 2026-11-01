@@ -2,7 +2,8 @@
 // undo step, and listeners re-render and autosave from the committed state.
 import { useSyncExternalStore } from 'react'
 
-import type { DesignDocument, DesignNode, Page } from '../../shared/document'
+import type { DesignDocument, DesignNode, Page, TextSpan } from '../../shared/document'
+import { clearFromSpans } from './richtext'
 import { applyStyleUpdate, type StyleUpdate } from './styles'
 import * as tree from './tree'
 import { EditError } from './tree'
@@ -76,6 +77,12 @@ export class Transaction {
       const node = this.node(id)
       const { style, ignored } = applyStyleUpdate(node, update)
       if (!sameStyle(style, node.style)) this.update(id, (page) => tree.setStyles(page, id, style))
+      // A text style set on the whole layer reaches all of its text, so runs stop overriding it.
+      if (node.spans) {
+        const spans = clearFromSpans(node.spans, Object.keys(update))
+        const unchanged = JSON.stringify(spans) === JSON.stringify(node.spans)
+        if (!unchanged) this.update(id, (page) => tree.setRichText(page, id, spans ?? [{ text: node.text ?? '' }]))
+      }
       if (Object.keys(ignored).length > 0) ignoredByNode[id] = ignored
     }
     return ignoredByNode
@@ -83,6 +90,10 @@ export class Transaction {
 
   setText(id: string, text: string) {
     this.update(id, (page) => tree.setText(page, id, text))
+  }
+
+  setRichText(id: string, spans: TextSpan[]) {
+    this.update(id, (page) => tree.setRichText(page, id, spans))
   }
 
   rename(id: string, name: string) {

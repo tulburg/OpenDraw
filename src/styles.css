@@ -569,3 +569,11 @@ body {
   text-align: start;
   white-space: normal;
 }
+
+/* A text layer being edited in place. */
+.text-editing {
+  outline: none;
+  cursor: text;
+  user-select: text;
+  -webkit-user-select: text;
+}

@@ -121,7 +121,7 @@ Rules:
 - Not supported, dropped and listed in the response: margin, display: grid and grid properties, display: inline (and inline-block, inline-flex), tables, scripts, style elements and form controls.
 - layer-name="Hero" sets the layer name.
 - <img src> takes http, https or data: image URLs. <svg> is kept as vector markup. <pre> or white-space: pre keeps whitespace.
-- An element holding only text becomes a text node. Formatting on part of the text (a <b> inside a <p>) is flattened to plain text and reported.`,
+- An element holding only text becomes a text node. Formatting on part of the text (a <b> or a styled <span> inside a <p>) is kept as rich text; a run can carry only text styles (color, font, weight, style, size, letter-spacing, line-height, text-transform, text-decoration, text stroke, and backgrounds with background-clip: text), and other properties on it are dropped and reported.`,
     inputSchema: z.object({
       fileId: requiredFileId,
       html: z.string().describe('HTML to turn into nodes.'),
@@ -148,7 +148,7 @@ Rules:
   },
   set_text_content: {
     description:
-      "Replaces the text of one or more text nodes, keeping their IDs and styles. html is the node's inner content without a wrapper; whitespace is kept as written and <br> is a line break. Formatting on part of the text is flattened to plain text, since rich text is not supported yet; use update_styles to style the whole node.",
+      "Replaces the text of one or more text nodes, keeping their IDs and styles. html is the node's inner content without a wrapper; whitespace is kept as written and <br> is a line break. Inline formatting (<b>, <i>, <u>, styled <span>s) is kept as rich text; runs carry only text styles. update_styles on the node styles all of its text, replacing that property on every run.",
     inputSchema: z.object({
       fileId: requiredFileId,
       updates: z.array(z.object({ nodeId, html: z.string() })).min(1)

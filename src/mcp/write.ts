@@ -152,11 +152,11 @@ export function runWriteTool(ctx: WriteContext, tool: WriteToolName, args: any):
         'set text',
         (tx) => {
           for (const { nodeId, html } of args.updates as { nodeId: string; html: string }[]) {
-            const { text, flattened } = parseInlineText(html)
-            tx.setText(nodeId, text)
+            const { text, spans, dropped } = parseInlineText(html)
+            tx.setRichText(nodeId, spans)
             const node = tx.node(nodeId)
             if (/\n| {2}/.test(text) && !node.style.whiteSpace) tx.updateStyles([nodeId], { whiteSpace: 'pre-wrap' })
-            if (flattened) notes.push(`${nodeId}: rich text is not supported yet; the formatting was flattened to plain text`)
+            for (const line of dropped) notes.push(`${nodeId}: ${line}`)
           }
         },
         () => ids

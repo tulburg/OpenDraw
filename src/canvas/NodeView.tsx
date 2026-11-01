@@ -3,10 +3,12 @@ import { type CSSProperties, useContext, useMemo } from 'react'
 import type { DesignNode } from '../../shared/document'
 import { safeImageSrc, sanitizeSvg } from '../document/media'
 import { PreviewContext } from './preview'
+import { EditingContext, TextEditor } from './TextEditor'
 
 /** Renders a node as a real DOM element with its stored CSS. */
 export function NodeView({ node }: { node: DesignNode }) {
   const preview = useContext(PreviewContext)[node.id]
+  const editing = useContext(EditingContext)
   const style: CSSProperties = { boxSizing: 'border-box', ...(node.style as CSSProperties), ...(preview as CSSProperties) }
   if (node.type === 'artboard') {
     style.position = 'absolute'
@@ -14,13 +16,31 @@ export function NodeView({ node }: { node: DesignNode }) {
   }
   if (node.type === 'image') return <ImageNode node={node} style={style} />
   if (node.type === 'svg') return <SvgNode node={node} style={style} />
+  if (node.type === 'text' && editing.id === node.id) return <TextEditor node={node} style={style} editing={editing} />
   return (
     <div data-node-id={node.id} data-node-type={node.type} style={style}>
-      {node.text}
+      {node.spans ? <Spans node={node} /> : node.text}
       {node.children.map((child) => (
         <NodeView key={child.id} node={child} />
       ))}
     </div>
+  )
+}
+
+/** Formatted runs of a text node. Line breaks are newlines, laid out by the node's white-space. */
+export function Spans({ node }: { node: DesignNode }) {
+  return (
+    <>
+      {node.spans?.map((span, i) =>
+        span.style ? (
+          <span key={i} style={span.style as CSSProperties}>
+            {span.text}
+          </span>
+        ) : (
+          span.text
+        )
+      )}
+    </>
   )
 }
 

@@ -6,6 +6,7 @@ import { findNode } from '../document/tree'
 import { CLIPBOARD_TYPE, copySelection, deleteSelection, duplicateSelection, paste, selectAll } from './commands'
 import { NodeView } from './NodeView'
 import { type Preview, PreviewContext } from './preview'
+import { type Editing, EditingContext } from './TextEditor'
 import { deeper, nodeElement, parentIdOf, pathAt, pickAtDepth } from './selection'
 import { nodeRect, type Rect, toScreen, zoomAt } from './viewport'
 
@@ -118,6 +119,12 @@ export function Canvas({
     setPreviewState(next)
   }, [])
   const [hoveredId, setHoveredId] = useState<string | null>(null)
+  // The text layer being edited in place, if any.
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const editing = useMemo<Editing>(() => ({ id: editingId, store, done: () => setEditingId(null) }), [editingId, store])
+  useEffect(() => {
+    if (editingId && !(selection.length === 1 && selection[0] === editingId)) setEditingId(null)
+  }, [selection, editingId])
   const [insertLine, setInsertLine] = useState<Rect | null>(null)
   // Handlers registered once read the latest values from refs.
   const viewportRef = useRef(viewport)
@@ -291,6 +298,8 @@ export function Canvas({
   }
 
   const onPointerDown = (event: React.PointerEvent) => {
+    // Clicks inside the text being edited move the caret and select text.
+    if ((event.target as HTMLElement).closest('[data-editing]')) return
     const base = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, active: false }
     commitNudge()
     if (event.button === 1 || (event.button === 0 && spaceHeld)) {
@@ -443,9 +452,17 @@ export function Canvas({
 
   // The pointer is captured during a press, so the double-click's target is the canvas itself; find
   // the layer under the cursor instead.
+  // Double-clicking a selected text layer, or drilling into one, edits it in place.
   const onDoubleClick = (event: React.MouseEvent) => {
-    const next = deeper(pathAt(document.elementFromPoint(event.clientX, event.clientY)), store.getState().selection)
-    if (next) store.select([next])
+    const hit = document.elementFromPoint(event.clientX, event.clientY)
+    if (hit?.closest('[data-editing]')) return
+    const path = pathAt(hit)
+    const selected = store.getState().selection
+    const isText = (id: string) => findNode(nodesRef.current, id)?.type === 'text'
+    const target = selected.length === 1 && path.includes(selected[0]) && isText(selected[0]) ? selected[0] : deeper(path, selected)
+    if (!target) return
+    store.select([target])
+    if (isText(target)) setEditingId(target)
   }
 
   // Outlines are measured from the DOM, so layers laid out by flexbox get accurate bounds.
@@ -501,11 +518,13 @@ export function Canvas({
         style={{ transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})` }}
       >
         <PreviewContext.Provider value={drawn}>
-          {nodes.map((node) => (
-            <div key={node.id} data-select-id={node.id}>
-              <NodeView node={node} />
-            </div>
-          ))}
+          <EditingContext.Provider value={editing}>
+            {nodes.map((node) => (
+              <div key={node.id} data-select-id={node.id}>
+                <NodeView node={node} />
+              </div>
+            ))}
+          </EditingContext.Provider>
         </PreviewContext.Provider>
       </div>
       <div className="canvas-overlay">
@@ -547,7 +566,7 @@ export function Canvas({
             style={{ left: rect.x, top: rect.y, width: rect.width, height: rect.height }}
           />
         ))}
-        {single && gesture?.kind !== 'reorder' && (
+        {single && gesture?.kind !== 'reorder' && !editingId && (
           <>
             {HANDLES.map((handle) => {
               const { x, y, width, height } = single.rect

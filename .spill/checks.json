@@ -262,5 +262,46 @@
         "detail": "live 40px, stored 16px until release, then 40px; one undo back to 16px"
       }
     ]
+  },
+  "S-8": {
+    "at": "2026-11-01T20:27:06.719Z",
+    "running": false,
+    "results": [
+      {
+        "name": "write_html keeps <b> and a colored <span> as spans and matches a plain browser",
+        "pass": true,
+        "detail": "4 runs (2 formatted); mean channel difference vs plain browser 0.74 of 255"
+      },
+      {
+        "name": "A span with padding is dropped from the run and reported",
+        "pass": true,
+        "detail": "reported \"padding on <span>: not supported on part of a text; style the whole text layer instead\""
+      },
+      {
+        "name": "get_jsx writes the runs as spans; find_nodes finds text across runs",
+        "pass": true,
+        "detail": "JSX has both spans; \"fast and\" finds the layer"
+      },
+      {
+        "name": "set_text_content keeps formatting; update_styles color reaches every run",
+        "pass": true,
+        "detail": "italic run kept; after update_styles every run renders rgb(18, 52, 86)"
+      },
+      {
+        "name": "A text layer saved before rich text loads and saves unchanged",
+        "pass": true,
+        "detail": "no spans key, renders as plain text"
+      },
+      {
+        "name": "Double-click, select a word, cmd+B, Escape: the word is bold in the file; one undo removes it",
+        "pass": true,
+        "detail": "\"words\" saved as {\"fontWeight\":\"bold\"}; one undo back to plain"
+      },
+      {
+        "name": "Typing a line break in place and pasting HTML keep their formatting",
+        "pass": true,
+        "detail": "\"Plain words\\nmore text\", pasted run {\"fontWeight\":\"bold\",\"color\":\"rgb(255, 0, 0)\"}"
+      }
+    ]
   }
 }

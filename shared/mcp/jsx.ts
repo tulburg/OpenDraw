@@ -74,6 +74,25 @@ function splitTailwind(style: CSSStyle): { classes: string[]; rest: CSSStyle } {
   return { classes, rest }
 }
 
+/** Text runs as <span>s, with line breaks as <br />. */
+function richText(node: DesignNode, options: JSXOptions): string {
+  const lines = (text: string) => text.split('\n').map(escapeText).join('<br />')
+  return (node.spans ?? [])
+    .map((span) => {
+      if (!span.style) return lines(span.text)
+      let style = span.style
+      const attributes: string[] = []
+      if (options.format === 'tailwind') {
+        const { classes, rest } = splitTailwind(style)
+        if (classes.length > 0) attributes.push(`className=${JSON.stringify(classes.join(' '))}`)
+        style = rest
+      }
+      if (Object.keys(style).length > 0) attributes.push(`style=${styleLiteral(style)}`)
+      return `<span${attributes.map((a) => ` ${a}`).join('')}>${lines(span.text)}</span>`
+    })
+    .join('')
+}
+
 function tagFor(node: DesignNode): string {
   if (node.type === 'image') return 'img'
   return 'div'
@@ -98,7 +117,8 @@ function render(node: DesignNode, options: JSXOptions, depth: number, isRoot: bo
   const tag = tagFor(node)
   const open = `${pad}<${tag} ${attributes.join(' ')}`
   // SVG markup goes in as written; it is XML, which JSX accepts apart from attribute casing.
-  const text = node.type === 'svg' ? (node.svg ?? '') : node.text ? escapeText(node.text) : ''
+  const text =
+    node.type === 'svg' ? (node.svg ?? '') : node.spans ? richText(node, options) : node.text ? escapeText(node.text) : ''
   if (node.children.length === 0 && !text) return `${open} />`
   if (node.children.length === 0 && !text.includes('\n')) return `${open}>${text}</${tag}>`
   const inner = [

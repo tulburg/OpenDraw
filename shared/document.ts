@@ -3,13 +3,22 @@
 
 export type CSSStyle = Record<string, string | number>
 
+/** A run of text in a text node, with the text styles that apply only to it. */
+export interface TextSpan {
+  text: string
+  style?: CSSStyle
+}
+
 export interface DesignNode {
   id: string
   type: 'artboard' | 'frame' | 'text' | 'image' | 'svg'
   name: string
   style: CSSStyle
   children: DesignNode[]
+  /** Text nodes: the plain text, always present. */
   text?: string
+  /** Text nodes with formatting on part of the text: the runs, whose texts join to `text`. */
+  spans?: TextSpan[]
   /** Image nodes: the image URL (http, https or a data: image). */
   src?: string
   /** SVG nodes: the sanitized <svg> markup, drawn to fill the node. */

@@ -1,7 +1,8 @@
 // Immutable edits on a page's node tree. Every function returns a new page and copies only the
 // nodes on the path to what changed, so undo snapshots share everything else.
-import type { DesignNode, Page } from '../../shared/document'
+import type { DesignNode, Page, TextSpan } from '../../shared/document'
 import { newId } from '../../shared/document'
+import { normalizeSpans, plainText } from './richtext'
 
 export class EditError extends Error {}
 
@@ -100,7 +101,21 @@ export function setStyles(page: Page, id: string, style: DesignNode['style']): P
 
 export function setText(page: Page, id: string, text: string): Page {
   if (requireNode(page, id).type !== 'text') throw new EditError(`Node ${id} is not a text node`)
-  return withNode(page, id, (node) => ({ ...node, text }))
+  return withNode(page, id, (node) => {
+    const { spans: _spans, ...plain } = node
+    return { ...plain, text }
+  })
+}
+
+/** Sets a text node's runs; `text` becomes their plain join. Unformatted runs leave a plain node. */
+export function setRichText(page: Page, id: string, spans: TextSpan[]): Page {
+  if (requireNode(page, id).type !== 'text') throw new EditError(`Node ${id} is not a text node`)
+  const normalized = normalizeSpans(spans)
+  return withNode(page, id, (node) => {
+    const { spans: _spans, ...plain } = node
+    const text = plainText(spans)
+    return normalized ? { ...plain, text, spans: normalized } : { ...plain, text }
+  })
 }
 
 export function rename(page: Page, id: string, name: string): Page {
