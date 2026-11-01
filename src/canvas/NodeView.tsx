@@ -1,11 +1,13 @@
-import { type CSSProperties, useMemo } from 'react'
+import { type CSSProperties, useContext, useMemo } from 'react'
 
 import type { DesignNode } from '../../shared/document'
 import { safeImageSrc, sanitizeSvg } from '../document/media'
+import { PreviewContext } from './preview'
 
 /** Renders a node as a real DOM element with its stored CSS. */
 export function NodeView({ node }: { node: DesignNode }) {
-  const style: CSSProperties = { boxSizing: 'border-box', ...(node.style as CSSProperties) }
+  const preview = useContext(PreviewContext)[node.id]
+  const style: CSSProperties = { boxSizing: 'border-box', ...(node.style as CSSProperties), ...(preview as CSSProperties) }
   if (node.type === 'artboard') {
     style.position = 'absolute'
     style.overflow ??= 'hidden'

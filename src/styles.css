@@ -276,6 +276,67 @@ body {
   }
 }
 
+.hover-outline {
+  position: absolute;
+  border: 1px solid var(--accent);
+  opacity: 0.6;
+}
+
+.resize-handle {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  background: #fff;
+  border: 1px solid var(--accent);
+  pointer-events: auto;
+}
+
+.resize-handle[data-handle='nw'],
+.resize-handle[data-handle='se'] {
+  cursor: nwse-resize;
+}
+
+.resize-handle[data-handle='ne'],
+.resize-handle[data-handle='sw'] {
+  cursor: nesw-resize;
+}
+
+.resize-handle[data-handle='n'],
+.resize-handle[data-handle='s'] {
+  cursor: ns-resize;
+}
+
+.resize-handle[data-handle='e'],
+.resize-handle[data-handle='w'] {
+  cursor: ew-resize;
+}
+
+.size-label {
+  position: absolute;
+  transform: translateX(-50%);
+  padding: 0 4px;
+  height: 16px;
+  line-height: 16px;
+  border-radius: 3px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 10px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.insert-line {
+  position: absolute;
+  background: var(--accent);
+}
+
+.marquee {
+  position: absolute;
+  border: 1px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
 .layer-list.nested {
   padding: 0;
 }

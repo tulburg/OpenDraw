@@ -97,8 +97,6 @@ export function Editor({ opened, store }: { opened: OpenedDocument; store: Docum
         if (isEditable(document.activeElement)) return
         event.preventDefault()
         runEditCommand(store, event.shiftKey ? 'redo' : 'undo')
-      } else if (event.key === 'Escape') {
-        store.select([])
       } else if (mod && (event.key === '=' || event.key === '+')) {
         event.preventDefault()
         setViewport((v) => v && zoomAt(v, nextZoomStep(v.zoom, 1), center))
@@ -117,22 +115,29 @@ export function Editor({ opened, store }: { opened: OpenedDocument; store: Docum
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [fit, store])
 
-  const select = useCallback((id: string | null) => store.select(id ? [id] : []), [store])
+  const selectLayer = useCallback(
+    (id: string, additive: boolean) => {
+      const current = store.getState().selection
+      if (!additive) store.select([id])
+      else store.select(current.includes(id) ? current.filter((s) => s !== id) : [...current, id])
+    },
+    [store]
+  )
   const fileName = (opened.path.split(/[\\/]/).pop() ?? '').replace(/\.opendraw$/, '')
   const selected = selectedId ? findNode(nodes, selectedId) : null
 
   return (
     <div className="app" data-platform={window.opendraw.platform}>
       <TopBar fileName={fileName} zoom={viewport?.zoom ?? null} />
-      <LayersPanel nodes={nodes} selectedId={selectedId} onSelect={select} />
+      <LayersPanel nodes={nodes} selection={selection} onSelect={selectLayer} />
       {/* Nodes stay hidden until the viewport is known, so a new file never flashes unfitted. */}
       <Canvas
+        store={store}
         nodes={viewport ? nodes : []}
         viewport={viewport ?? { x: 0, y: 0, zoom: 1 }}
-        selectedId={selectedId}
+        selection={selection}
         workingIds={workingIds}
         onViewportChange={setViewport}
-        onSelect={select}
         onResize={onResize}
       />
       <StylesPanel node={selected} />

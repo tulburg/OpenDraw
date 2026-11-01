@@ -1,9 +1,12 @@
+import { useEffect, useRef } from 'react'
+
 import type { DesignNode } from '../../shared/document'
 
 interface LayersPanelProps {
   nodes: DesignNode[]
-  selectedId: string | null
-  onSelect: (id: string) => void
+  selection: string[]
+  /** `additive` (shift + click) adds or removes the layer instead of replacing the selection. */
+  onSelect: (id: string, additive: boolean) => void
 }
 
 const INDENT_PX = 12
@@ -23,38 +26,44 @@ function LayerIcon({ type }: { type: DesignNode['type'] }) {
   )
 }
 
-function LayerRows({ nodes, depth, selectedId, onSelect }: LayersPanelProps & { depth: number }) {
+function LayerRows({ nodes, depth, selection, onSelect }: LayersPanelProps & { depth: number }) {
   return nodes.map((node) => (
     <li key={node.id}>
       <button
         type="button"
         className="layer-row"
         data-layer-id={node.id}
-        data-selected={node.id === selectedId || undefined}
+        data-selected={selection.includes(node.id) || undefined}
         style={{ paddingLeft: 8 + depth * INDENT_PX }}
-        onClick={() => onSelect(node.id)}
+        onClick={(event) => onSelect(node.id, event.shiftKey)}
       >
         <LayerIcon type={node.type} />
         <span className="layer-name">{node.name}</span>
       </button>
       {node.children.length > 0 && (
         <ul className="layer-list nested">
-          <LayerRows nodes={node.children} depth={depth + 1} selectedId={selectedId} onSelect={onSelect} />
+          <LayerRows nodes={node.children} depth={depth + 1} selection={selection} onSelect={onSelect} />
         </ul>
       )}
     </li>
   ))
 }
 
-export function LayersPanel({ nodes, selectedId, onSelect }: LayersPanelProps) {
+export function LayersPanel({ nodes, selection, onSelect }: LayersPanelProps) {
+  // Keep the first selected layer in view when the selection changes on the canvas (S-6 Req 7).
+  const ref = useRef<HTMLElement>(null)
+  useEffect(() => {
+    if (!selection[0]) return
+    ref.current?.querySelector(`[data-layer-id="${CSS.escape(selection[0])}"]`)?.scrollIntoView({ block: 'nearest' })
+  }, [selection])
   return (
-    <aside className="panel layers-panel" data-testid="layers-panel">
+    <aside ref={ref} className="panel layers-panel" data-testid="layers-panel">
       <div className="panel-title">Layers</div>
       {nodes.length === 0 ? (
         <div className="panel-empty">No layers on this page</div>
       ) : (
         <ul className="layer-list">
-          <LayerRows nodes={nodes} depth={0} selectedId={selectedId} onSelect={onSelect} />
+          <LayerRows nodes={nodes} depth={0} selection={selection} onSelect={onSelect} />
         </ul>
       )}
     </aside>

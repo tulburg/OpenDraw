@@ -191,5 +191,45 @@
         "detail": "No open file nope. The open file is file-1; get it from get_basic_info. | Text nodes cannot have children | No node or page missing"
       }
     ]
+  },
+  "S-6": {
+    "at": "2026-11-01T20:15:06.081Z",
+    "running": false,
+    "results": [
+      {
+        "name": "Click, double-click, cmd + click and Escape pick the layer at each depth",
+        "pass": true,
+        "detail": "Card, A, B, then Escape to Card, Test, nothing; cmd + click A; empty area Test; hover outline; 8 handles and \"400 x 120\""
+      },
+      {
+        "name": "Dragging an artboard 100 px moves it by 100 at another zoom; nothing is written mid-drag; one undo restores it",
+        "pass": true,
+        "detail": "zoom 0.5: 900px -> 1000px -> undo 900px"
+      },
+      {
+        "name": "Dragging the first of three flex children to the end gives 2, 3, 1; undo restores 1, 2, 3",
+        "pass": true,
+        "detail": "B,C,A, then A,B,C"
+      },
+      {
+        "name": "A resize handle sets 300 x 200 in px; shift keeps the ratio",
+        "pass": true,
+        "detail": "300px x 200px, then shift to 360 x 240; two undos back to 400 x 120"
+      },
+      {
+        "name": "Delete, duplicate, copy and paste each work and are one undo step",
+        "pass": true,
+        "detail": "delete, duplicate, copy + paste into Card; each undone in one step"
+      },
+      {
+        "name": "Arrow keys nudge 1 px, shift 10 px, as one undo step",
+        "pass": true
+      },
+      {
+        "name": "A marquee over two of three artboards selects exactly those; the layers panel shows both",
+        "pass": true,
+        "detail": "marquee: Three,Two; cmd + A: Test,Three,Two"
+      }
+    ]
   }
 }

@@ -128,6 +128,37 @@ export class App {
     await sleep(30)
   }
 
+  /** A left click with modifiers (1 alt, 2 ctrl, 4 meta/cmd, 8 shift); clickCount 2 is a double-click. */
+  async clickWith(x: number, y: number, modifiers: number, clickCount = 1) {
+    for (let count = 1; count <= clickCount; count++) {
+      const base = { x, y, button: 'left', modifiers, clickCount: count }
+      await this.send('Input.dispatchMouseEvent', { type: 'mousePressed', ...base, buttons: 1 })
+      await this.send('Input.dispatchMouseEvent', { type: 'mouseReleased', ...base, buttons: 0 })
+    }
+    await sleep(30)
+  }
+
+  async mouseMove(x: number, y: number, buttons = 0, modifiers = 0) {
+    await this.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y, button: buttons ? 'left' : 'none', buttons, modifiers })
+  }
+
+  async mouseDown(x: number, y: number, modifiers = 0) {
+    await this.send('Input.dispatchMouseEvent', { type: 'mousePressed', x, y, button: 'left', buttons: 1, clickCount: 1, modifiers })
+  }
+
+  async mouseUp(x: number, y: number, modifiers = 0) {
+    await this.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y, button: 'left', buttons: 0, clickCount: 1, modifiers })
+    await sleep(30)
+  }
+
+  /** Runs an editing command (copy, cut, paste) the way the keyboard shortcut does. */
+  async command(name: 'copy' | 'cut' | 'paste', key: string) {
+    const base = { key, code: `Key${key.toUpperCase()}`, modifiers: process.platform === 'darwin' ? 4 : 2, commands: [name] }
+    await this.send('Input.dispatchKeyEvent', { type: 'rawKeyDown', ...base })
+    await this.send('Input.dispatchKeyEvent', { type: 'keyUp', ...base, commands: undefined })
+    await sleep(50)
+  }
+
   /** Presses a key. Modifiers: 1 alt, 2 ctrl, 4 meta/cmd, 8 shift. */
   async key(key: string, code: string, modifiers = 0, keyCode = 0) {
     const base = { key, code, modifiers, windowsVirtualKeyCode: keyCode }
@@ -157,8 +188,15 @@ export class App {
     this.ws.close()
   }
 
-  kill() {
+  /** Stops the app and waits for it to exit, so the next launch can use the debugging port. */
+  async kill() {
     this.proc.kill()
+    const exited = await Promise.race([this.proc.exited.then(() => true), sleep(5000).then(() => false)])
+    if (!exited) {
+      this.proc.kill('SIGKILL')
+      await this.proc.exited
+    }
+    this.ws.close()
   }
 
   /** Simulates a crash: no close events, no flush. */

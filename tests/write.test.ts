@@ -310,7 +310,7 @@ try {
   })
 } finally {
   client.close()
-  app.kill()
+  await app.kill()
 }
 
 await finish('write')

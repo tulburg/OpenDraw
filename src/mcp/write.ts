@@ -7,7 +7,7 @@ import { type DocumentStore, EditError, type Transaction } from '../document/sto
 import { applyStyleUpdate, type StyleUpdate } from '../document/styles'
 import { findNode } from '../document/tree'
 import { parseHTML, parseInlineText } from './html'
-import { type Box, findArtboardSpot } from './placement'
+import { placeArtboard } from './placement'
 import type { WorkingIndicators } from './working'
 
 const MAX_NAME = 50
@@ -54,27 +54,9 @@ export function runWriteTool(ctx: WriteContext, tool: WriteToolName, args: any):
     throw new EditError(`No open file ${args.fileId}. The open file is ${state.document.id}; get it from get_basic_info.`)
   }
 
-  /** Artboard boxes on a page, for placing new artboards. */
-  const boxes = (tx: Transaction, pageId: string, except?: string): Box[] =>
-    tx.childrenOf(pageId)
-      .filter((artboard) => artboard.id !== except)
-      .map((artboard) => {
-        const measured = ctx.measure(artboard.id)
-        return {
-          x: px(artboard.style.left) ?? 0,
-          y: px(artboard.style.top) ?? 0,
-          width: px(artboard.style.width) ?? measured?.width ?? 0,
-          height: px(artboard.style.height) ?? measured?.height ?? 0
-        }
-      })
-
-  /** Moves `artboard` to an empty spot. `sizeFrom` is the node whose rendered size to use if its height is not in px. */
-  const placeArtboard = (tx: Transaction, pageId: string, artboard: DesignNode, sizeFrom = artboard.id) => {
-    const width = px(artboard.style.width) ?? ctx.measure(sizeFrom)?.width ?? 0
-    const height = px(artboard.style.height) ?? ctx.measure(sizeFrom)?.height ?? 0
-    const spot = findArtboardSpot(boxes(tx, pageId), width, height)
-    artboard.style = { ...artboard.style, left: `${spot.x}px`, top: `${spot.y}px` }
-  }
+  /** Moves `artboard` to an empty spot on the page. `sizeFrom` is the node whose rendered size to use if its size is not in px. */
+  const placeOnPage = (tx: Transaction, pageId: string, artboard: DesignNode, sizeFrom = artboard.id) =>
+    placeArtboard(artboard, tx.childrenOf(pageId), ctx.measure, sizeFrom)
 
   /** Runs the edit as one undo step and marks the artboards it touched as being worked on. */
   const write = <T>(label: string, edit: (tx: Transaction) => T, touched: (result: T) => string[]): T => {
@@ -98,7 +80,7 @@ export function runWriteTool(ctx: WriteContext, tool: WriteToolName, args: any):
       return write(
         'create artboard',
         (tx) => {
-          if (px(style.left) === null || px(style.top) === null) placeArtboard(tx, pageId, artboard)
+          if (px(style.left) === null || px(style.top) === null) placeOnPage(tx, pageId, artboard)
           tx.insertNodes(pageId, undefined, [artboard])
           return {
             id: artboard.id,
@@ -238,7 +220,7 @@ export function runWriteTool(ctx: WriteContext, tool: WriteToolName, args: any):
           const duplicates = (args.nodes as { id: string; parentId?: string }[]).map(({ id, parentId }) => {
             const { pageId } = tx.locate(id)
             const { newId: copyId, idMap } = tx.duplicateNode(id, parentId, (copy) => {
-              if (copy.type === 'artboard') placeArtboard(tx, parentId ?? pageId, copy, id)
+              if (copy.type === 'artboard') placeOnPage(tx, parentId ?? pageId, copy, id)
             })
             return { sourceId: id, newId: copyId, descendantIdMap: idMap }
           })
