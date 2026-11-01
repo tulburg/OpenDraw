@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
 import type { CSSStyle, DesignNode, Viewport } from '../../shared/document'
 import type { DocumentStore } from '../document/store'
@@ -16,6 +16,8 @@ interface CanvasProps {
   selection: string[]
   /** Artboards an agent is writing to, outlined with a working label. */
   workingIds: string[]
+  /** Live overrides from outside the canvas, such as scrubbing a value in the styles panel. */
+  externalPreview: Preview
   onViewportChange: (viewport: Viewport) => void
   onResize: (size: { width: number; height: number }) => void
 }
@@ -89,7 +91,16 @@ function resized(origin: Box, handle: Handle, dx: number, dy: number, keepRatio:
   }
 }
 
-export function Canvas({ store, nodes, viewport, selection, workingIds, onViewportChange, onResize }: CanvasProps) {
+export function Canvas({
+  store,
+  nodes,
+  viewport,
+  selection,
+  workingIds,
+  externalPreview,
+  onViewportChange,
+  onResize
+}: CanvasProps) {
   const ref = useRef<HTMLDivElement>(null)
   const [spaceHeld, setSpaceHeld] = useState(false)
   // Pointer events can outrun rendering, so handlers read the gesture and preview from refs; the
@@ -458,7 +469,13 @@ export function Canvas({ store, nodes, viewport, selection, workingIds, onViewpo
     setSelectedRects(rects(selection))
     setHoverRect(hoveredId && !selection.includes(hoveredId) ? screenRect(hoveredId) : null)
     setWorkingRects(rects(workingIds))
-  }, [selection, hoveredId, workingIds, nodes, viewport, preview])
+  }, [selection, hoveredId, workingIds, nodes, viewport, preview, externalPreview])
+
+  const drawn = useMemo(() => {
+    const merged: Preview = { ...externalPreview }
+    for (const [id, style] of Object.entries(preview)) merged[id] = { ...merged[id], ...style }
+    return merged
+  }, [preview, externalPreview])
 
   const single = selection.length === 1 && selectedRects.length === 1 ? selectedRects[0] : null
   const dragging = !!gesture?.active && gesture.kind !== 'pan'
@@ -483,7 +500,7 @@ export function Canvas({ store, nodes, viewport, selection, workingIds, onViewpo
         data-zoom={viewport.zoom}
         style={{ transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})` }}
       >
-        <PreviewContext.Provider value={preview}>
+        <PreviewContext.Provider value={drawn}>
           {nodes.map((node) => (
             <div key={node.id} data-select-id={node.id}>
               <NodeView node={node} />
@@ -493,7 +510,7 @@ export function Canvas({ store, nodes, viewport, selection, workingIds, onViewpo
       </div>
       <div className="canvas-overlay">
         {nodes.map((node) => {
-          const rect = toScreen(nodeRect({ ...node, style: { ...node.style, ...preview[node.id] } }), viewport)
+          const rect = toScreen(nodeRect({ ...node, style: { ...node.style, ...drawn[node.id] } }), viewport)
           return (
             <div
               key={node.id}

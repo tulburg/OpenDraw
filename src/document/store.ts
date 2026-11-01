@@ -33,6 +33,11 @@ interface HistoryEntry {
 
 export type ChangeKind = 'document' | 'selection' | 'page'
 
+function sameStyle(a: DesignNode['style'], b: DesignNode['style']): boolean {
+  const keys = Object.keys(a)
+  return keys.length === Object.keys(b).length && keys.every((key) => a[key] === b[key])
+}
+
 /** Edits made inside one transaction. Nodes are found on whichever page holds them. */
 export class Transaction {
   private selection: string[] | null = null
@@ -68,8 +73,9 @@ export class Transaction {
   updateStyles(ids: string[], update: StyleUpdate): Record<string, Record<string, string>> {
     const ignoredByNode: Record<string, Record<string, string>> = {}
     for (const id of ids) {
-      const { style, ignored } = applyStyleUpdate(this.node(id), update)
-      this.update(id, (page) => tree.setStyles(page, id, style))
+      const node = this.node(id)
+      const { style, ignored } = applyStyleUpdate(node, update)
+      if (!sameStyle(style, node.style)) this.update(id, (page) => tree.setStyles(page, id, style))
       if (Object.keys(ignored).length > 0) ignoredByNode[id] = ignored
     }
     return ignoredByNode

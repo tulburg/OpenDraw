@@ -231,5 +231,36 @@
         "detail": "marquee: Three,Two; cmd + A: Test,Three,Two"
       }
     ]
+  },
+  "S-7": {
+    "at": "2026-11-01T20:20:28.995Z",
+    "running": false,
+    "results": [
+      {
+        "name": "Changing padding to 24 writes padding: 24px; one undo restores it",
+        "pass": true,
+        "detail": "padding 24px, gap \"4 * 3\" = 12px; two undos restore both"
+      },
+      {
+        "name": "Hug writes width: fit-content; Fill writes flex: 1 in a row parent",
+        "pass": true,
+        "detail": "fit-content, then flex: 1 (lays out at 490 px)"
+      },
+      {
+        "name": "margin typed in the raw CSS view shows the note and leaves the document unchanged",
+        "pass": true,
+        "detail": "note: \"margin: margin is not supported; use padding and gap\""
+      },
+      {
+        "name": "Two layers with different fills show Mixed; one color applies to both in one undo step",
+        "pass": true,
+        "detail": "Mixed, then both #00ff00; 2 file colors in the picker; one undo restores both"
+      },
+      {
+        "name": "Scrubbing font size from 16 to 40 updates the canvas live and records one undo step",
+        "pass": true,
+        "detail": "live 40px, stored 16px until release, then 40px; one undo back to 16px"
+      }
+    ]
   }
 }

@@ -159,6 +159,12 @@ export class App {
     await sleep(50)
   }
 
+  /** Types text into the focused element, as an input method would. */
+  async type(text: string) {
+    await this.send('Input.insertText', { text })
+    await sleep(30)
+  }
+
   /** Presses a key. Modifiers: 1 alt, 2 ctrl, 4 meta/cmd, 8 shift. */
   async key(key: string, code: string, modifiers = 0, keyCode = 0) {
     const base = { key, code, modifiers, windowsVirtualKeyCode: keyCode }

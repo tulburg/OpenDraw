@@ -1,11 +1,10 @@
 {
   "discussing": [
-    "S-6"
+    "S-7"
   ],
   "next": [
-    "S-7",
     "S-8"
   ],
-  "note": "Building S-6: canvas selection and direct manipulation",
-  "at": "2026-11-01T20:07:31.634Z"
+  "note": "Building S-7: styles panel editing",
+  "at": "2026-11-01T20:16:00.919Z"
 }

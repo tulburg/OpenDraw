@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import type { OpenedDocument, Viewport } from '../shared/document'
+import type { CSSStyle, OpenedDocument, Viewport } from '../shared/document'
 import { Canvas } from './canvas/Canvas'
 import { fitViewport, nextZoomStep, zoomAt } from './canvas/viewport'
 import { type DocumentStore, useStore } from './document/store'
-import { findNode } from './document/tree'
 import type { WriteToolName } from '../shared/mcp/definitions'
 import { buildSnapshot } from './mcp/snapshot'
 import { useWorking, WorkingIndicators } from './mcp/working'
@@ -43,10 +42,11 @@ export function Editor({ opened, store }: { opened: OpenedDocument; store: Docum
   const [viewport, setViewport] = useState<Viewport | null>(opened.viewport)
   const canvasSize = useRef<{ width: number; height: number } | null>(null)
   const [working] = useState(() => new WorkingIndicators())
+  const [panelPreview, setPanelPreview] = useState<Record<string, CSSStyle>>({})
+  const onPanelPreview = useCallback((preview: Record<string, CSSStyle> | null) => setPanelPreview(preview ?? {}), [])
   const workingIds = useWorking(working)
 
   const nodes = doc.pages.find((p) => p.id === pageId)?.nodes ?? []
-  const selectedId = selection[0] ?? null
 
   const fit = useCallback(() => {
     if (canvasSize.current) setViewport(fitViewport(nodes, canvasSize.current))
@@ -124,7 +124,6 @@ export function Editor({ opened, store }: { opened: OpenedDocument; store: Docum
     [store]
   )
   const fileName = (opened.path.split(/[\\/]/).pop() ?? '').replace(/\.opendraw$/, '')
-  const selected = selectedId ? findNode(nodes, selectedId) : null
 
   return (
     <div className="app" data-platform={window.opendraw.platform}>
@@ -137,10 +136,11 @@ export function Editor({ opened, store }: { opened: OpenedDocument; store: Docum
         viewport={viewport ?? { x: 0, y: 0, zoom: 1 }}
         selection={selection}
         workingIds={workingIds}
+        externalPreview={panelPreview}
         onViewportChange={setViewport}
         onResize={onResize}
       />
-      <StylesPanel node={selected} />
+      <StylesPanel store={store} nodes={nodes} selection={selection} measure={measureNode} onPreview={onPanelPreview} />
     </div>
   )
 }

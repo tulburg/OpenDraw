@@ -164,28 +164,235 @@ body {
   text-overflow: ellipsis;
 }
 
-.style-list {
-  margin: 0;
-  padding: 0 12px 12px;
+.style-group {
+  padding: 8px 12px 12px;
+  border-top: 1px solid var(--border);
 }
 
-.style-row {
-  display: flex;
-  justify-content: space-between;
+.style-group h3 {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.field {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  align-items: center;
   gap: 8px;
-  padding: 4px 0;
+  min-height: 26px;
 }
 
-.style-row dt {
+.field-label {
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.field-label.scrub {
+  cursor: ew-resize;
+}
+
+.field-control {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.styles-panel input:not([type]),
+.styles-panel input[type='text'],
+.styles-panel select,
+.raw-css {
+  width: 100%;
+  min-width: 0;
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: var(--row-hover);
+  color: var(--text);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.styles-panel input:focus,
+.styles-panel select:focus,
+.raw-css:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.styles-panel input::placeholder {
   color: var(--text-muted);
 }
 
-.style-row dd {
-  margin: 0;
-  font-variant-numeric: tabular-nums;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.field.toggle {
+  display: flex;
+  gap: 8px;
+}
+
+.size-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.segmented {
+  display: flex;
+  margin-left: 80px;
+  border-radius: 4px;
+  background: var(--row-hover);
+  padding: 2px;
+}
+
+.segmented button {
+  flex: 1;
+  height: 20px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 11px;
+}
+
+.segmented button[data-active] {
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+.color-swatch {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.color-swatch.small {
+  width: 18px;
+  height: 18px;
+}
+
+.color-popover {
+  position: absolute;
+  top: 28px;
+  right: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 196px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.color-popover-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.color-popover input[type='color'] {
+  width: 28px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.color-alpha {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  align-items: center;
+  color: var(--text-muted);
+}
+
+.color-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.eyedropper,
+.icon-button {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.eyedropper svg,
+.icon-button svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+
+.eyedropper:hover,
+.icon-button:hover {
+  background: var(--row-hover);
+  color: var(--text);
+}
+
+.shadow-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.shadow-row {
+  display: flex;
+  gap: 4px;
+}
+
+.text-button {
+  align-self: flex-start;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+}
+
+.raw-css {
+  height: auto;
+  padding: 6px;
+  resize: vertical;
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.style-notes {
+  margin: 0 12px 8px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  background: color-mix(in srgb, #f59f00 15%, transparent);
+}
+
+.style-note {
+  padding: 2px 0;
+}
+
+.field-note {
+  color: var(--text-muted);
 }
 
 .canvas {
