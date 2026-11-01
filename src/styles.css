@@ -1,0 +1,303 @@
+:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --panel: #ffffff;
+  --canvas: #f0f0f0;
+  --border: #e5e5e5;
+  --text: #1f1f1f;
+  --text-muted: #8a8a8a;
+  --row-hover: #f2f2f2;
+  --accent: #0d99ff;
+  --working: #8b5cf6;
+  --accent-soft: #e5f4ff;
+  --top-bar-height: 40px;
+  --panel-width: 240px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 12px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1e1e1e;
+    --panel: #2c2c2c;
+    --canvas: #1e1e1e;
+    --border: #3a3a3a;
+    --text: #f0f0f0;
+    --text-muted: #9a9a9a;
+    --row-hover: #383838;
+    --accent: #0d99ff;
+    --working: #a78bfa;
+    --accent-soft: #1c3a52;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  user-select: none;
+}
+
+.app {
+  display: grid;
+  grid-template-columns: var(--panel-width) 1fr var(--panel-width);
+  grid-template-rows: var(--top-bar-height) 1fr;
+  grid-template-areas:
+    'top top top'
+    'layers canvas styles';
+  height: 100%;
+}
+
+.app-error {
+  padding: 24px;
+}
+
+.top-bar {
+  grid-area: top;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 12px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  -webkit-app-region: drag;
+}
+
+/* Leave room for the macOS traffic lights. */
+.app[data-platform='darwin'] .top-bar {
+  padding-left: 84px;
+}
+
+.file-name {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.zoom-readout {
+  min-width: 48px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.panel {
+  background: var(--panel);
+  overflow: auto;
+  min-height: 0;
+}
+
+.layers-panel {
+  grid-area: layers;
+  border-right: 1px solid var(--border);
+}
+
+.styles-panel {
+  grid-area: styles;
+  border-left: 1px solid var(--border);
+}
+
+.panel-title {
+  padding: 12px 12px 8px;
+  font-weight: 600;
+}
+
+.panel-empty {
+  padding: 12px;
+  color: var(--text-muted);
+}
+
+.layer-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 4px;
+}
+
+.layer-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 28px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.layer-row:hover {
+  background: var(--row-hover);
+}
+
+.layer-row[data-selected] {
+  background: var(--accent-soft);
+}
+
+.layer-icon {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.2;
+}
+
+.layer-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.style-list {
+  margin: 0;
+  padding: 0 12px 12px;
+}
+
+.style-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.style-row dt {
+  color: var(--text-muted);
+}
+
+.style-row dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.canvas {
+  grid-area: canvas;
+  position: relative;
+  overflow: hidden;
+  background: var(--canvas);
+  touch-action: none;
+  min-width: 0;
+  min-height: 0;
+}
+
+.canvas[data-panning='ready'] {
+  cursor: grab;
+}
+
+.canvas[data-panning='active'] {
+  cursor: grabbing;
+}
+
+.canvas-world {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+}
+
+.canvas-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.artboard-label {
+  position: absolute;
+  height: 16px;
+  line-height: 16px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: auto;
+}
+
+.artboard-label[data-selected] {
+  color: var(--accent);
+}
+
+.canvas[data-panning] .artboard-label {
+  pointer-events: none;
+}
+
+.selection-outline {
+  position: absolute;
+  border: 1px solid var(--accent);
+}
+
+.working-indicator {
+  position: absolute;
+  border: 2px solid var(--working);
+  pointer-events: none;
+  animation: working-pulse 1.6s ease-in-out infinite;
+}
+
+.working-label {
+  position: absolute;
+  right: 0;
+  top: -22px;
+  padding: 0 6px;
+  height: 18px;
+  line-height: 18px;
+  border-radius: 4px;
+  background: var(--working);
+  color: #fff;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+@keyframes working-pulse {
+  50% {
+    border-color: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .working-indicator {
+    animation: none;
+  }
+}
+
+.layer-list.nested {
+  padding: 0;
+}
+
+/* The hidden render window: no app chrome, transparent around the artboard. */
+:root[data-render] body {
+  background: transparent;
+}
+
+.render-root {
+  position: relative;
+}
+
+/* An artboard is a fresh web page: its content starts from browser defaults, not the editor's UI
+   font and theme colors, so HTML looks the same here as in a plain browser. */
+[data-node-type='artboard'] {
+  color-scheme: light;
+  color: #000;
+  font: initial;
+  font-size: 16px;
+  line-height: normal;
+  letter-spacing: normal;
+  text-align: start;
+  white-space: normal;
+}

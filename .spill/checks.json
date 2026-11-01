@@ -1,0 +1,195 @@
+{
+  "S-2": {
+    "at": "2026-11-01T19:15:59.638Z",
+    "running": false,
+    "results": [
+      {
+        "name": "Clean profile: window, layout and one fitted Desktop artboard; file on disk",
+        "pass": true,
+        "detail": "artboard 832x520 on screen, zoom 0.578"
+      },
+      {
+        "name": "Artboard is a DOM element whose computed size and background match its CSS",
+        "pass": true,
+        "detail": "1440px x 900px, rgb(255, 255, 255)"
+      },
+      {
+        "name": "Pan and zoom with every input; readout matches; limits 10% and 6400%",
+        "pass": true,
+        "detail": "scroll, space + drag, middle drag, pinch, cmd/ctrl + scroll, cmd/ctrl + plus/minus/0, shift + 1"
+      },
+      {
+        "name": "Select and deselect by click and Escape; the layers panel follows",
+        "pass": true
+      },
+      {
+        "name": "UI follows the OS light and dark theme",
+        "pass": true,
+        "detail": "light rgb(255, 255, 255), dark rgb(44, 44, 44) (prefers-color-scheme emulated)"
+      },
+      {
+        "name": "Window stops at the 960x600 minimum",
+        "pass": true,
+        "detail": "asked 500x400, got 960x600"
+      },
+      {
+        "name": "Relaunch: same file at the same pan and zoom; window keeps size and position",
+        "pass": true,
+        "detail": "zoom 0.780, window 1200x800 at 120,90"
+      },
+      {
+        "name": "Overlapping first-run opens create one file (reload, React StrictMode)",
+        "pass": true,
+        "detail": "two concurrent opens returned the same Untitled.opendraw"
+      },
+      {
+        "name": "bun run dev opens the window (Vite dev server, React StrictMode)",
+        "pass": true,
+        "detail": "dev server 200, Electron window up, no errors in the log"
+      }
+    ]
+  },
+  "S-3": {
+    "at": "2026-11-01T19:39:22.559Z",
+    "running": false,
+    "results": [
+      {
+        "name": "Each edit changes the rendered DOM and the saved file",
+        "pass": true,
+        "detail": "insert, update styles, set text, rename, move, duplicate, delete"
+      },
+      {
+        "name": "A grouped transaction with one invalid edit changes nothing",
+        "pass": true,
+        "detail": "rejected with: Node card is not a text node"
+      },
+      {
+        "name": "update styles applies padding and reports margin in ignoredStyles",
+        "pass": true,
+        "detail": "ignored: display,left,margin"
+      },
+      {
+        "name": "10 edits, 10 undos, 10 redos; shortcuts and selection follow",
+        "pass": true,
+        "detail": "document identical after undo and redo; selection restored at each step"
+      },
+      {
+        "name": "Edit, wait 1 s, crash: the file has the edit",
+        "pass": true
+      },
+      {
+        "name": "Edit then quit immediately: the file has the edit",
+        "pass": true
+      },
+      {
+        "name": "Reload: the same node IDs come back",
+        "pass": true,
+        "detail": "5 nodes"
+      },
+      {
+        "name": "S-2 launch checks still pass after the refactor",
+        "pass": true,
+        "detail": "8/8"
+      }
+    ]
+  },
+  "S-4": {
+    "at": "2026-11-01T19:58:43.957Z",
+    "running": false,
+    "results": [
+      {
+        "name": "The bridge lists the 9 read tools, marked read-only",
+        "pass": true,
+        "detail": "find_nodes, get_basic_info, get_children, get_computed_styles, get_jsx, get_node_info, get_screenshot, get_selection, get_tree_summary"
+      },
+      {
+        "name": "get_basic_info: file, page, artboards, fonts",
+        "pass": true
+      },
+      {
+        "name": "get_tree_summary: outline with sizes and depth limit",
+        "pass": true
+      },
+      {
+        "name": "get_node_info and get_children: parent, text, positions and sizes",
+        "pass": true
+      },
+      {
+        "name": "get_selection: selected node and its artboard",
+        "pass": true
+      },
+      {
+        "name": "find_nodes: text and color matches across notations",
+        "pass": true
+      },
+      {
+        "name": "get_jsx round-trips the tree, styles and text",
+        "pass": true
+      },
+      {
+        "name": "get_computed_styles reports laid-out sizes, not just stored CSS",
+        "pass": true,
+        "detail": "grow 260px (stored CSS has no width)"
+      },
+      {
+        "name": "get_screenshot matches the canvas pixels at scale 1",
+        "pass": true,
+        "detail": "400x300 and 800x600; mean channel difference vs canvas 0.08 of 255"
+      },
+      {
+        "name": "The HTTP listener only serves this machine, with the token",
+        "pass": true,
+        "detail": "127.0.0.1 only; 192.168.68.52 refused; no token 401; foreign origin 403"
+      },
+      {
+        "name": "With the app closed, tools return the not-running error quickly",
+        "pass": true,
+        "detail": "answered in 2 ms"
+      }
+    ]
+  },
+  "S-5": {
+    "at": "2026-11-01T19:58:43.888Z",
+    "running": false,
+    "results": [
+      {
+        "name": "An agent builds a landing page with only the write tools; it matches the HTML in a plain browser",
+        "pass": true,
+        "detail": "mean channel difference vs plain browser 0.92 of 255; header, hero, 3 cards with SVG and images"
+      },
+      {
+        "name": "write_html reports margin, grid and tables as dropped and renders the rest",
+        "pass": true,
+        "detail": "5 drops reported; padding, size and the other children kept"
+      },
+      {
+        "name": "Two create_artboard calls never overlap and keep 80 px apart",
+        "pass": true,
+        "detail": "4 artboards, closest 80 px; A at 2400,0, B at 2870,0"
+      },
+      {
+        "name": "Undo after write_html removes exactly what it added",
+        "pass": true,
+        "detail": "one cmd+Z restores the document byte for byte; redo brings it back"
+      },
+      {
+        "name": "The working indicator shows during writes and clears on finish_working_on_nodes",
+        "pass": true
+      },
+      {
+        "name": "A write to another page does not change the user's page or viewport",
+        "pass": true,
+        "detail": "page 2 got the artboard and its content; page 1 view unchanged"
+      },
+      {
+        "name": "move_nodes keeps IDs, reorders siblings and crosses pages",
+        "pass": true
+      },
+      {
+        "name": "Write tools reject bad input without changing the document",
+        "pass": true,
+        "detail": "No open file nope. The open file is file-1; get it from get_basic_info. | Text nodes cannot have children | No node or page missing"
+      }
+    ]
+  }
+}
