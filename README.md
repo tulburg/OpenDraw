@@ -19,6 +19,7 @@ It is modeled on [Paper](https://paper.design): the MCP tools use Paper's names 
 - [Security](#security)
 - [Roadmap](#roadmap)
 - [How this project is built](#how-this-project-is-built)
+- [License](#license)
 
 ## How it works
 
@@ -228,3 +229,7 @@ The [gap analysis](GAP_ANALYSIS.md) has the full comparison with Paper.
 Every feature starts as a spec on a Spill board (a visual spec board for agent work), stored in [`.spill/`](.spill/): questions, decisions and specs with acceptance checks, which are recorded on the card when the checks run. [`CLAUDE.md`](CLAUDE.md) holds the working rules for agents in this repo.
 
 OpenDraw started from a study of [open-pencil](https://github.com/open-pencil/open-pencil), an open-source Figma-style editor. It is a new, CSS-native app rather than a fork: open-pencil's ideas informed the MCP server and the canvas, but no code was copied.
+
+## License
+
+[MIT](LICENSE)
