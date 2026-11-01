@@ -282,6 +282,7 @@ export function StylesPanel({ store, nodes, selection, measure, onPreview }: Sty
             )}
           </>
         )}
+        {!anyArtboard && <NumberField editor={editor} property="rotate" label="Rotation" />}
         <NumberField editor={editor} property="zIndex" label="Z index" />
       </Group>
 

@@ -7,6 +7,23 @@ import { CLIPBOARD_TYPE, copySelection, deleteSelection, duplicateSelection, pas
 import { NodeView } from './NodeView'
 import { type Preview, PreviewContext } from './preview'
 import { type Editing, EditingContext } from './TextEditor'
+import {
+  CORNER_PROPERTIES,
+  CORNERS,
+  type Corner,
+  type Frame,
+  frameOf,
+  type Handle,
+  type HandleInfo,
+  halfExtent,
+  handleInfoOf,
+  OPPOSITE,
+  PADDING_PROPERTIES,
+  rotateVector,
+  SelectionFrame,
+  SIDES,
+  type Side
+} from './handles'
 import { Toolbar } from './Toolbar'
 import {
   containerOn,
@@ -35,8 +52,6 @@ interface CanvasProps {
   onResize: (size: { width: number; height: number }) => void
 }
 
-type Handle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w'
-const HANDLES: Handle[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']
 
 interface Box {
   left: number
@@ -51,10 +66,24 @@ type Gesture = { pointerId: number; startX: number; startY: number; active: bool
   | { kind: 'pan'; origin: Viewport }
   | { kind: 'move'; origins: Offsets }
   | { kind: 'reorder'; id: string; parentId: string; axis: 'x' | 'y'; from: number; index: number }
-  | { kind: 'resize'; id: string; handle: Handle; origin: Box; positioned: boolean }
+  | { kind: 'resize'; id: string; handle: Handle; origin: Box; positioned: boolean; angle: number }
+  | { kind: 'rotate'; id: string; center: { x: number; y: number }; start: number; origin: number }
+  | { kind: 'radius'; id: string; corner: Corner; origin: Record<Corner, number>; max: number; angle: number }
+  | { kind: 'padding'; id: string; side: Side; origin: Record<Side, number>; angle: number }
+  | { kind: 'gap'; id: string; axis: 'x' | 'y'; origin: number; angle: number }
   | { kind: 'marquee'; base: string[]; rect: Rect }
   | { kind: 'draw'; tool: 'artboard' | 'frame' | 'text' | 'image'; parentId: string | null; rect: Rect }
 )
+
+/** Gestures that end by writing their preview styles, with their undo labels. */
+const STYLE_GESTURES: Partial<Record<Gesture['kind'], string>> = {
+  move: 'Move',
+  resize: 'Resize',
+  rotate: 'Rotate',
+  radius: 'Corner radius',
+  padding: 'Padding',
+  gap: 'Gap'
+}
 
 const WHEEL_ZOOM_SPEED = 0.01
 const MAX_WHEEL_ZOOM_DELTA = 50
@@ -166,9 +195,9 @@ export function Canvas({
   const boxOf = (id: string): Box | null => {
     const el = nodeElement(ref.current!, id)
     if (!el) return null
-    const rect = el.getBoundingClientRect()
     const zoom = viewportRef.current.zoom
-    return { left: el.offsetLeft, top: el.offsetTop, width: rect.width / zoom, height: rect.height / zoom }
+    const frame = frameOf(el, ref.current!.getBoundingClientRect(), zoom)
+    return { left: el.offsetLeft, top: el.offsetTop, width: frame.width / zoom, height: frame.height / zoom }
   }
   const measure = useCallback((id: string) => {
     const el = ref.current && nodeElement(ref.current, id)
@@ -422,11 +451,32 @@ export function Canvas({
       return
     }
 
-    const handle = target.closest<HTMLElement>('[data-handle]')?.dataset.handle as Handle | undefined
-    if (handle && selection.length === 1) {
-      const origin = boxOf(selection[0])
-      const positioned = isPositionedNode(findNode(nodes, selection[0]))
-      if (origin) setGesture({ ...base, kind: 'resize', id: selection[0], handle, origin, positioned })
+    const zone = target.closest<HTMLElement>('[data-handle],[data-rotate],[data-radius],[data-padding],[data-gap]')
+    const single = selection.length === 1 ? selectedFrames.find((f) => f.id === selection[0]) : undefined
+    if (zone && single) {
+      const id = single.id
+      const { frame } = single
+      if (zone.dataset.handle) {
+        const origin = boxOf(id)
+        const positioned = isPositionedNode(findNode(nodes, id))
+        const handle = zone.dataset.handle as Handle
+        if (origin) setGesture({ ...base, kind: 'resize', id, handle, origin, positioned, angle: frame.angle })
+      } else if (zone.dataset.rotate) {
+        const bounds = ref.current!.getBoundingClientRect()
+        const center = { x: bounds.left + frame.cx, y: bounds.top + frame.cy }
+        const start = (Math.atan2(event.clientY - center.y, event.clientX - center.x) * 180) / Math.PI
+        setGesture({ ...base, kind: 'rotate', id, center, start, origin: frame.angle })
+      } else if (zone.dataset.radius && handleInfo) {
+        const max = Math.min(frame.width, frame.height) / 2 / viewport.zoom
+        const corner = zone.dataset.radius as Corner
+        setGesture({ ...base, kind: 'radius', id, corner, origin: handleInfo.radii, max, angle: frame.angle })
+      } else if (zone.dataset.padding && handleInfo?.flex) {
+        const side = zone.dataset.padding as Side
+        setGesture({ ...base, kind: 'padding', id, side, origin: handleInfo.flex.padding, angle: frame.angle })
+      } else if (zone.dataset.gap && handleInfo?.flex) {
+        const { axis, gap } = handleInfo.flex
+        setGesture({ ...base, kind: 'gap', id, axis, origin: gap, angle: frame.angle })
+      }
       return
     }
 
@@ -480,10 +530,64 @@ export function Canvas({
         setPreview(offsetStyles(next.origins, dx, dy))
         break
       case 'resize': {
-        const box = resized(next.origin, next.handle, dx, dy, event.shiftKey, event.altKey)
+        // Along the layer's own axes, so rotated layers resize the way they are drawn.
+        const local = rotateVector({ x: dx, y: dy }, -next.angle)
+        const box = resized(next.origin, next.handle, local.x, local.y, event.shiftKey, event.altKey)
+        if (next.angle) {
+          // CSS rotates around the center: shift the box so the opposite edge stays put on screen.
+          const o = next.origin
+          const v = { x: o.left + o.width / 2 - (box.left + box.width / 2), y: o.top + o.height / 2 - (box.top + box.height / 2) }
+          const turned = rotateVector(v, next.angle)
+          box.left += v.x - turned.x
+          box.top += v.y - turned.y
+        }
         const style: CSSStyle = { width: px(box.width), height: px(box.height) }
         if (next.positioned) Object.assign(style, { left: px(box.left), top: px(box.top) })
         setPreview({ [next.id]: style })
+        break
+      }
+      case 'rotate': {
+        const pointer = (Math.atan2(event.clientY - next.center.y, event.clientX - next.center.x) * 180) / Math.PI
+        let angle = next.origin + pointer - next.start
+        angle = ((((angle + 180) % 360) + 360) % 360) - 180
+        angle = event.shiftKey ? Math.round(angle / 15) * 15 : Math.round(angle * 10) / 10
+        if (Object.is(angle, -0) || angle === -180) angle = Math.abs(angle)
+        setPreview({ [next.id]: { rotate: `${angle}deg` } })
+        setHandleLabel({ ...canvasPoint(event), text: `${angle}°` })
+        break
+      }
+      case 'radius': {
+        // Toward the center along the corner's diagonal.
+        const local = rotateVector({ x: dx, y: dy }, -next.angle)
+        const sx = next.corner.includes('w') ? 1 : -1
+        const sy = next.corner.includes('n') ? 1 : -1
+        const value = Math.round(Math.min(next.max, Math.max(0, next.origin[next.corner] + (local.x * sx + local.y * sy) / 2)))
+        const preview: Record<string, string | undefined> = { borderRadius: event.altKey ? undefined : px(value) }
+        for (const corner of CORNERS) {
+          preview[CORNER_PROPERTIES[corner]] = event.altKey ? px(corner === next.corner ? value : next.origin[corner]) : undefined
+        }
+        setPreview({ [next.id]: preview as CSSStyle })
+        setHandleLabel({ ...canvasPoint(event), text: `Radius ${value}` })
+        break
+      }
+      case 'padding': {
+        const local = rotateVector({ x: dx, y: dy }, -next.angle)
+        const inward = { top: local.y, bottom: -local.y, left: local.x, right: -local.x }[next.side]
+        const value = Math.round(Math.max(0, next.origin[next.side] + inward))
+        const sides = event.shiftKey ? SIDES : event.altKey ? [next.side, OPPOSITE[next.side]] : [next.side]
+        const preview: Record<string, string | undefined> = { padding: event.shiftKey ? px(value) : undefined }
+        for (const side of SIDES) {
+          preview[PADDING_PROPERTIES[side]] = event.shiftKey ? undefined : px(sides.includes(side) ? value : next.origin[side])
+        }
+        setPreview({ [next.id]: preview as CSSStyle })
+        setHandleLabel({ ...canvasPoint(event), text: `Padding ${value}` })
+        break
+      }
+      case 'gap': {
+        const local = rotateVector({ x: dx, y: dy }, -next.angle)
+        const value = Math.round(Math.max(0, next.origin + (next.axis === 'x' ? local.x : local.y)))
+        setPreview({ [next.id]: { gap: px(value), rowGap: undefined, columnGap: undefined } as unknown as CSSStyle })
+        setHandleLabel({ ...canvasPoint(event), text: `Gap ${value}` })
         break
       }
       case 'reorder': {
@@ -553,13 +657,17 @@ export function Canvas({
     setGesture(null)
     setPreview({})
     setInsertLine(null)
+    setHandleLabel(null)
     if (finished.kind === 'draw') return finishDraw(finished)
     if (!finished.active) return
-    if (finished.kind === 'move' || finished.kind === 'resize') {
+    if (STYLE_GESTURES[finished.kind]) {
       const entries = Object.entries(styles)
       if (entries.length === 0) return
-      store.transact(finished.kind === 'move' ? 'Move' : 'Resize', (tx) => {
-        for (const [id, update] of entries) tx.updateStyles([id], update)
+      // Previews mark removed properties as undefined; the document removes them with null.
+      store.transact(STYLE_GESTURES[finished.kind]!, (tx) => {
+        for (const [id, update] of entries) {
+          tx.updateStyles([id], Object.fromEntries(Object.entries(update).map(([k, v]) => [k, v ?? null])))
+        }
       })
     } else if (finished.kind === 'reorder' && finished.index !== finished.from) {
       store.transact('Reorder', (tx) => tx.moveNode(finished.id, finished.parentId, finished.index))
@@ -582,12 +690,26 @@ export function Canvas({
   }
 
   // Outlines are measured from the DOM, so layers laid out by flexbox get accurate bounds.
-  const [selectedRects, setSelectedRects] = useState<{ id: string; rect: Rect }[]>([])
-  const [hoverRect, setHoverRect] = useState<Rect | null>(null)
+  // Selection and hover outlines follow each layer's rotation (S-10).
+  const [selectedFrames, setSelectedFrames] = useState<{ id: string; frame: Frame }[]>([])
+  const [hoverFrame, setHoverFrame] = useState<Frame | null>(null)
+  const [handleInfo, setHandleInfo] = useState<HandleInfo | null>(null)
+  const [handleLabel, setHandleLabel] = useState<{ x: number; y: number; text: string } | null>(null)
   const [workingRects, setWorkingRects] = useState<{ id: string; rect: Rect }[]>([])
   useLayoutEffect(() => {
     const canvas = ref.current!
     const outer = canvas.getBoundingClientRect()
+    const zoom = viewport.zoom
+    const frames = selection.flatMap((id) => {
+      const el = nodeElement(canvas, id)
+      return el ? [{ id, frame: frameOf(el, outer, zoom) }] : []
+    })
+    setSelectedFrames(frames)
+    const hoverEl = hoveredId && !selection.includes(hoveredId) ? nodeElement(canvas, hoveredId) : null
+    setHoverFrame(hoverEl ? frameOf(hoverEl, outer, zoom) : null)
+    const singleEl = selection.length === 1 ? nodeElement(canvas, selection[0]) : null
+    const singleNode = singleEl ? findNode(nodes, selection[0]) : null
+    setHandleInfo(singleEl && singleNode ? handleInfoOf(singleEl, singleNode) : null)
     const screenRect = (id: string): Rect | null => {
       const el = nodeElement(canvas, id)
       if (!el) return null
@@ -599,8 +721,6 @@ export function Canvas({
         const rect = screenRect(id)
         return rect ? [{ id, rect }] : []
       })
-    setSelectedRects(rects(selection))
-    setHoverRect(hoveredId && !selection.includes(hoveredId) ? screenRect(hoveredId) : null)
     setWorkingRects(rects(workingIds))
   }, [selection, hoveredId, workingIds, nodes, viewport, preview, externalPreview])
 
@@ -610,7 +730,9 @@ export function Canvas({
     return merged
   }, [preview, externalPreview])
 
-  const single = selection.length === 1 && selectedRects.length === 1 ? selectedRects[0] : null
+  const single = selection.length === 1 && selectedFrames.length === 1 ? selectedFrames[0] : null
+  const showHandles = !!single && gesture?.kind !== 'reorder' && !editingId
+  const shade = gesture?.kind === 'padding' ? 'padding' : gesture?.kind === 'gap' ? 'gap' : null
   const dragging = !!gesture?.active && gesture.kind !== 'pan'
 
   return (
@@ -680,35 +802,41 @@ export function Canvas({
             <span className="working-label">Agent working</span>
           </div>
         ))}
-        {hoverRect && !dragging && (
+        {hoverFrame && !dragging && (
           <div
             className="hover-outline"
-            style={{ left: hoverRect.x, top: hoverRect.y, width: hoverRect.width, height: hoverRect.height }}
+            style={{
+              left: hoverFrame.cx - hoverFrame.width / 2,
+              top: hoverFrame.cy - hoverFrame.height / 2,
+              width: hoverFrame.width,
+              height: hoverFrame.height,
+              transform: hoverFrame.angle ? `rotate(${hoverFrame.angle}deg)` : undefined
+            }}
           />
         )}
-        {selectedRects.map(({ id, rect }) => (
-          <div
+        {selectedFrames.map(({ id, frame }) => (
+          <SelectionFrame
             key={id}
-            className="selection-outline"
-            data-outline-id={id}
-            style={{ left: rect.x, top: rect.y, width: rect.width, height: rect.height }}
+            id={id}
+            frame={frame}
+            info={single?.id === id ? handleInfo : null}
+            zoom={viewport.zoom}
+            showHandles={showHandles}
+            activeShade={shade}
           />
         ))}
-        {single && gesture?.kind !== 'reorder' && !editingId && (
-          <>
-            {HANDLES.map((handle) => {
-              const { x, y, width, height } = single.rect
-              const hx = handle.includes('w') ? x : handle.includes('e') ? x + width : x + width / 2
-              const hy = handle.includes('n') ? y : handle.includes('s') ? y + height : y + height / 2
-              return <div key={handle} className="resize-handle" data-handle={handle} style={{ left: hx, top: hy }} />
-            })}
-            <div
-              className="size-label"
-              style={{ left: single.rect.x + single.rect.width / 2, top: single.rect.y + single.rect.height + 8 }}
-            >
-              {Math.round(single.rect.width / viewport.zoom)} x {Math.round(single.rect.height / viewport.zoom)}
-            </div>
-          </>
+        {showHandles && single && (
+          <div
+            className="size-label"
+            style={{ left: single.frame.cx, top: single.frame.cy + halfExtent(single.frame).y + 8 }}
+          >
+            {Math.round(single.frame.width / viewport.zoom)} x {Math.round(single.frame.height / viewport.zoom)}
+          </div>
+        )}
+        {handleLabel && (
+          <div className="handle-label" style={{ left: handleLabel.x + 14, top: handleLabel.y + 14 }}>
+            {handleLabel.text}
+          </div>
         )}
         {insertLine && (
           <div

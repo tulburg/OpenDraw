@@ -13,12 +13,13 @@
     "test:launch": "bun run build && bun tests/launch.test.ts",
     "test:engine": "bun run build && bun tests/engine.test.ts",
     "test:mcp": "bun run build && bun tests/mcp.test.ts",
-    "test": "bun run build && bun tests/launch.test.ts && bun tests/engine.test.ts && bun tests/mcp.test.ts && bun tests/write.test.ts && bun tests/canvas.test.ts && bun tests/styles.test.ts && bun tests/text.test.ts && bun tests/tools.test.ts",
+    "test": "bun run build && bun tests/launch.test.ts && bun tests/engine.test.ts && bun tests/mcp.test.ts && bun tests/write.test.ts && bun tests/canvas.test.ts && bun tests/styles.test.ts && bun tests/text.test.ts && bun tests/tools.test.ts && bun tests/handles.test.ts",
     "test:write": "bun run build && bun tests/write.test.ts",
     "test:canvas": "bun run build && bun tests/canvas.test.ts",
     "test:styles": "bun run build && bun tests/styles.test.ts",
     "test:text": "bun run build && bun tests/text.test.ts",
-    "test:tools": "bun run build && bun tests/tools.test.ts"
+    "test:tools": "bun run build && bun tests/tools.test.ts",
+    "test:handles": "bun run build && bun tests/handles.test.ts"
   },
   "trustedDependencies": [
     "electron"

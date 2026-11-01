@@ -7,6 +7,10 @@ export type Shared = string | typeof MIXED
 
 /** Properties whose plain numbers stay unitless; every other number gets px. */
 const UNITLESS = new Set(['opacity', 'zIndex', 'fontWeight', 'flexGrow', 'flexShrink', 'flex', 'order'])
+/** Properties whose plain numbers are angles. */
+const DEGREES = new Set(['rotate'])
+
+const defaultUnit = (property: string) => (UNITLESS.has(property) ? '' : DEGREES.has(property) ? 'deg' : 'px')
 
 /** The value the selected layers share for `property`, '' if none set it, or MIXED. */
 export function sharedValue(nodes: DesignNode[], property: string): Shared {
@@ -64,7 +68,7 @@ export function parseNumberInput(property: string, input: string): string | numb
   const value = evaluate(text.replace(/(px|rem|em|%|vw|vh|deg|ms|s|fr)\b/g, ''))
   if (value === null) return text
   if (unit) return `${round(value)}${unit}`
-  return UNITLESS.has(property) ? round(value) : `${round(value)}px`
+  return UNITLESS.has(property) ? round(value) : `${round(value)}${defaultUnit(property)}`
 }
 
 /** Steps a number value by `delta`, keeping its unit. Returns null if the value is not a plain number. */
@@ -75,7 +79,7 @@ export function stepValue(property: string, value: string, delta: number): strin
   const unit = match ? match[2] : ''
   const next = round(number + delta)
   if (unit) return `${next}${unit}`
-  return UNITLESS.has(property) ? next : `${next}px`
+  return UNITLESS.has(property) ? next : `${next}${defaultUnit(property)}`
 }
 
 export interface RGBA {

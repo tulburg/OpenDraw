@@ -339,5 +339,41 @@
         "detail": "get_jsx lists the image, SVG and frame; a drawn artboard 79px x 53px shows in get_tree_summary"
       }
     ]
+  },
+  "S-10": {
+    "at": "2026-11-01T20:46:13.713Z",
+    "running": false,
+    "results": [
+      {
+        "name": "Each layer type shows exactly its handle sets",
+        "pass": true,
+        "detail": "Box: resize 8, rotate 4, radius 4, padding 0, gap 0; Pic: resize 8, rotate 4, radius 4, padding 0, gap 0; Label: resize 8, rotate 4, radius 0, padding 0, gap 0; Row: resize 8, rotate 4, radius 4, padding 4, gap 1; Board: resize 8, rotate 0, radius 4, padding 0, gap 0"
+      },
+      {
+        "name": "Dragging a rotate zone 90 degrees writes rotate: 90deg; shift snaps to 15; one undo each, at zoom 0.5 and 2",
+        "pass": true,
+        "detail": "zoom 0.5: 90deg, shift 45deg; zoom 2: 90deg, shift 45deg"
+      },
+      {
+        "name": "A rotated outline matches the layer; resizing at 30 degrees keeps the west edge in place",
+        "pass": true,
+        "detail": "outline corners within 0.00 px at 45 degrees; at 30 degrees width 200 -> 260px, west edge moved 0.02 px"
+      },
+      {
+        "name": "Dragging a corner dot 12 px inward writes border-radius: 12px; alt writes one corner (zoom 0.5 and 2)",
+        "pass": true,
+        "detail": "zoom 0.5: all 12px, alt top-right 12px; zoom 2: all 12px, alt top-right 12px"
+      },
+      {
+        "name": "The left padding handle adds 10 px to padding-left; the gap handle adds 8 px to gap",
+        "pass": true,
+        "detail": "padding-left 10 -> 20px, gap 10 -> 18px; one undo each"
+      },
+      {
+        "name": "Typing 30 in the rotation field writes rotate: 30deg; agents read and write rotate",
+        "pass": true,
+        "detail": "field wrote 30deg; update_styles rotate 12deg, computed 12deg, in get_jsx"
+      }
+    ]
   }
 }
