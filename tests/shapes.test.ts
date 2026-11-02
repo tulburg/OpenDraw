@@ -166,6 +166,36 @@ try {
     return `alt drag shows ${one}; then a corner drag stores ${stored.borderRadius} and shows ${all}`
   })
 
+  await check('A drag inside the selection over a layer on top moves the selection, not that layer; a click there selects it', async () => {
+    // Two sibling layers, the second on top of the first.
+    const [under, top] = ['under', 'top']
+    await app.eval(`window.opendrawStore.transact('add', (tx) => tx.insertNodes('Free', undefined, [
+      { id: 'under', type: 'frame', name: 'Under', style: { position: 'absolute', left: '20px', top: '250px', width: '200px', height: '130px', backgroundColor: '#e5e5e5' }, children: [] },
+      { id: 'top', type: 'frame', name: 'Top', style: { position: 'absolute', left: '120px', top: '280px', width: '80px', height: '40px', backgroundColor: '#5b4848' }, children: [] }
+    ])), true`)
+    await app.eval(`window.opendrawStore.select(['${under}']), true`)
+    await Bun.sleep(80)
+    const z = await zoom()
+    const from = await screenAt('Free', 160, 300)
+    // Without cmd, which would pick the deepest layer instead.
+    await app.mouseDown(from.x, from.y)
+    for (let i = 1; i <= 5; i++) await app.mouseMove(from.x + 6 * z * i, from.y + 2 * z * i, 1)
+    await app.mouseUp(from.x + 30 * z, from.y + 10 * z)
+    await Bun.sleep(80)
+    const moved = (await node(under)).style
+    const still = (await node(top)).style
+    const after = await selected()
+    expect(moved.left === '50px' && moved.top === '260px', `selected layer at ${moved.left}, ${moved.top}`)
+    expect(still.left === '120px' && still.top === '280px', `top layer moved to ${still.left}, ${still.top}`)
+    expect(after.join() === under, `selection ${after}`)
+    const at = await screenAt('Free', 180, 310)
+    await app.click(at.x, at.y)
+    await Bun.sleep(80)
+    const clicked = await selected()
+    expect(clicked.join() === top, `click selected ${clicked}`)
+    return `dragged over the top layer: selection moved to ${moved.left}, ${moved.top}, top layer stayed; a click selected the top layer`
+  })
+
   await check('A rectangle drawn on empty canvas is an artboard of its own', async () => {
     const before = (await pageNodes()).length
     await pressKey('r')

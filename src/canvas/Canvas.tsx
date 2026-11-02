@@ -88,6 +88,8 @@ type Gesture = { pointerId: number; startX: number; startY: number; active: bool
       duplicated: boolean
       /** The artboard under the pointer, when the layers would move into it. */
       dropArtboard: string | null
+      /** Pressed on another layer inside the selection's bounds: a click without a drag selects it. */
+      clickSelects?: string
     }
   | { kind: 'reorder'; id: string; parentId: string; target: string; axis: 'x' | 'y'; from: number; index: number }
   | { kind: 'resize'; id: string; handle: Handle; origin: Box; positioned: boolean; angle: number; screen: Rect; targets: Rect[] }
@@ -637,6 +639,19 @@ export function Canvas({
       store.select(selection.includes(picked) ? selection.filter((id) => id !== picked) : [...selection, picked])
       return
     }
+    // As in Figma, a drag inside the selection's bounds moves the selection, even over a layer on
+    // top of it; a click there selects that layer. Layers inside the selection keep their own drag.
+    const inside = (id: string) => {
+      for (let at: string | null = id; at; at = parentOf(at)) if (selection.includes(at)) return true
+      return false
+    }
+    const bounds = !(event.metaKey || event.ctrlKey) && !inside(picked) ? unionRect(selection.flatMap((id) => screenRectOf(id) ?? [])) : null
+    const press = canvasPoint(event)
+    if (bounds && press.x >= bounds.x && press.x <= bounds.x + bounds.width && press.y >= bounds.y && press.y <= bounds.y + bounds.height && selection.every((id) => isPositionedNode(findNode(nodes, id)))) {
+      const { siblings, parent } = snapTargets(parentOf(selection[0]), selection)
+      setGesture({ ...base, kind: 'move', origins: offsetsOf(selection), box: bounds, siblings, parent, duplicated: false, dropArtboard: null, clickSelects: picked })
+      return
+    }
     const selected = selection.includes(picked) ? selection : [picked]
     if (selected !== selection) store.select(selected)
 
@@ -886,7 +901,10 @@ export function Canvas({
     setGuides([])
     setSpacing([])
     if (finished.kind === 'draw') return finishDraw(finished)
-    if (!finished.active) return
+    if (!finished.active) {
+      if (finished.kind === 'move' && finished.clickSelects) store.select([finished.clickSelects])
+      return
+    }
     if (STYLE_GESTURES[finished.kind]) {
       // Only the dragged layers' styles are written (a move also previews its artboard unclipped).
       const entries = Object.entries(styles).filter(([id]) => finished.kind !== 'move' || id in finished.origins)
