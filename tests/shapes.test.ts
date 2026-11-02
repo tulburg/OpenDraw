@@ -143,6 +143,29 @@ try {
     return `dot showed ${dot.title}; dragged 14 px out: ${after.borderRadius}`
   })
 
+  await check('After a corner drag the canvas shows the new radius, also after an alt drag set one corner', async () => {
+    await pressKey('r')
+    await drag(await screenAt('Free', 300, 250), await screenAt('Free', 420, 340))
+    const id = (await selected())[0]
+    const z = await zoom()
+    const shown = () => app.eval<string>(`(() => { const s = getComputedStyle(document.querySelector('.canvas-world [data-node-id="${id}"]')); return [s.borderTopLeftRadius, s.borderTopRightRadius, s.borderBottomRightRadius, s.borderBottomLeftRadius].join(' ') })()`)
+    const dot = (corner: string) => app.eval<{ x: number; y: number }>(`(() => { const r = document.querySelector('.radius-dot[data-radius="${corner}"]').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 } })()`)
+    const ne = await dot('ne')
+    await app.mouseDown(ne.x, ne.y, 1)
+    for (let i = 1; i <= 5; i++) await app.mouseMove(ne.x - (8 * z * i) / 5, ne.y + (8 * z * i) / 5, 1, 1)
+    await app.mouseUp(ne.x - 8 * z, ne.y + 8 * z, 1)
+    await Bun.sleep(150)
+    const one = await shown()
+    const nw = await dot('nw')
+    await drag(nw, { x: nw.x + 20 * z, y: nw.y + 20 * z })
+    await Bun.sleep(150)
+    const all = await shown()
+    const stored = (await node(id)).style
+    expect(one === '0px 8px 0px 0px', `after alt drag the canvas shows ${one}`)
+    expect(stored.borderRadius === '20px' && all === '20px 20px 20px 20px', `stored ${JSON.stringify(stored)}, canvas shows ${all}`)
+    return `alt drag shows ${one}; then a corner drag stores ${stored.borderRadius} and shows ${all}`
+  })
+
   await check('A rectangle drawn on empty canvas is an artboard of its own', async () => {
     const before = (await pageNodes()).length
     await pressKey('r')

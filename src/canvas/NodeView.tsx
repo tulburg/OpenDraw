@@ -8,6 +8,27 @@ import { EditingContext, TextEditor } from './TextEditor'
 /** The file's design tokens as custom properties, set on every artboard (S-14 Req 2). */
 export const TokensContext = createContext<CSSStyle>({})
 
+const CORNERS = ['borderTopLeftRadius', 'borderTopRightRadius', 'borderBottomRightRadius', 'borderBottomLeftRadius'] as const
+
+/**
+ * Writes border-radius as its four corners. React sets and clears style properties one by one, so a
+ * shorthand next to corners being cleared (a corner-radius drag ending) can wipe the shorthand's
+ * corners on screen. A value with a slash (elliptical corners) is left as it is.
+ */
+function cornerRadii(style: CSSProperties): CSSProperties {
+  const shorthand = style.borderRadius
+  const out = Object.fromEntries(Object.entries(style).filter(([, value]) => value !== undefined)) as CSSProperties
+  if (shorthand === undefined || String(shorthand).includes('/')) return out
+  const v = String(shorthand).trim().split(/\s+/)
+  // CSS order: top-left, top-right, bottom-right, bottom-left, with missing values copied across.
+  const values = [v[0], v[1] ?? v[0], v[2] ?? v[0], v[3] ?? v[1] ?? v[0]]
+  delete out.borderRadius
+  CORNERS.forEach((corner, i) => {
+    if (out[corner] === undefined) (out as Record<string, unknown>)[corner] = typeof shorthand === 'number' ? shorthand : values[i]
+  })
+  return out
+}
+
 /**
  * Renders a node as a real DOM element with its stored CSS. Memoized: edits replace only the nodes on
  * the changed path, so panning and zooming re-render nothing below the world (S-21).
@@ -16,7 +37,7 @@ export const NodeView = memo(function NodeView({ node }: { node: DesignNode }) {
   const preview = usePreview(node.id)
   const editing = useContext(EditingContext)
   const tokens = useContext(TokensContext)
-  const style: CSSProperties = { boxSizing: 'border-box', ...(node.style as CSSProperties), ...(preview as CSSProperties) }
+  const style = cornerRadii({ boxSizing: 'border-box', ...(node.style as CSSProperties), ...(preview as CSSProperties) })
   if (node.type === 'artboard') {
     for (const [name, value] of Object.entries(tokens)) if (!(name in style)) (style as CSSStyle)[name] = value
     style.position = 'absolute'
