@@ -144,6 +144,12 @@ export class Transaction {
     }
   }
 
+  /** Swaps an image layer's picture, keeping its ID, name and styles (S-26 Req 3). */
+  setImageSource(id: string, src: string) {
+    if (this.node(id).type !== 'image') throw new EditError(`Node ${id} is not an image`)
+    this.update(id, (page) => tree.withNode(page, id, (node) => ({ ...node, src })))
+  }
+
   setExports(id: string, exports: ExportSetting[]) {
     this.update(id, (page) => tree.setExports(page, id, exports))
   }

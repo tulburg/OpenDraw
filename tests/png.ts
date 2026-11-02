@@ -32,6 +32,18 @@ export function solidPNG(width: number, height: number, [r, g, b, a]: number[]):
   return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk('IHDR', ihdr), chunk('IDAT', deflateSync(raw)), chunk('IEND', Buffer.alloc(0))])
 }
 
+/** An RGBA PNG of equal-width vertical stripes, one per color, left to right. */
+export function stripedPNG(width: number, height: number, colors: number[][]): Buffer {
+  const ihdr = Buffer.alloc(13)
+  ihdr.writeUInt32BE(width, 0)
+  ihdr.writeUInt32BE(height, 4)
+  ihdr.set([8, 6, 0, 0, 0], 8)
+  const pixels = Array.from({ length: width }, (_, x) => colors[Math.floor((x * colors.length) / width)])
+  const row = Buffer.concat([Buffer.from([0]), Buffer.from(pixels.flat())])
+  const raw = Buffer.concat(Array.from({ length: height }, () => row))
+  return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk('IHDR', ihdr), chunk('IDAT', deflateSync(raw)), chunk('IEND', Buffer.alloc(0))])
+}
+
 /** Decodes an 8-bit RGB or RGBA PNG; returns a pixel reader. */
 export function readPNG(png: Buffer) {
   let offset = 8

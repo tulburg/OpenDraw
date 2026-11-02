@@ -106,7 +106,8 @@ const COMPUTED_PROPERTIES = [
   'fontWeight', 'fontStyle', 'lineHeight', 'letterSpacing', 'textAlign', 'textDecorationLine', 'textTransform',
   'whiteSpace', 'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth', 'borderTopStyle',
   'borderTopColor', 'borderTopLeftRadius', 'borderTopRightRadius', 'borderBottomRightRadius', 'borderBottomLeftRadius',
-  'boxShadow', 'filter', 'backdropFilter', 'transform', 'rotate', 'mixBlendMode', 'objectFit'
+  'boxShadow', 'filter', 'backdropFilter', 'transform', 'rotate', 'mixBlendMode', 'objectFit', 'objectPosition',
+  'backgroundSize', 'backgroundPosition', 'backgroundRepeat'
 ]
 
 export async function computedStyles(

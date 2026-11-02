@@ -1,14 +1,15 @@
 // The styles panel (S-7): edits the selected layers' CSS, grouped like Paper's design panel, with a
 // raw CSS view for everything else. Every change goes through the document engine as one undo step.
-import { useCallback, useEffect, useMemo, useState, memo } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, memo } from 'react'
 
 import type { CSSStyle, DesignNode, Token } from '../../shared/document'
 import { type DocumentStore, useStore } from '../document/store'
 import type { StyleUpdate } from '../document/styles'
 import { findNode } from '../document/tree'
+import { isPlaceableImage, replaceImage } from '../canvas/tools'
 import { documentColors, documentFonts, kebab, MIXED, parseRawCSS, rawCSS, sharedValue } from './css-values'
 import { ExportSection } from './ExportSection'
-import { ColorField, FontField, NumberField, SelectField, ShadowField, type StyleEditor, TextField } from './fields'
+import { ColorField, FontField, NumberField, PositionField, SelectField, ShadowField, type StyleEditor, TextField } from './fields'
 
 interface StylesPanelProps {
   store: DocumentStore
@@ -92,6 +93,35 @@ function SizeField({ editor, axis, nodes, measure }: { editor: StyleEditor; axis
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+/** Fit choices for image layers (`object-fit`) and background images (`background-size`), S-26. */
+const IMAGE_FITS: [string, string][] = [['cover', 'Fill'], ['contain', 'Fit'], ['fill', 'Stretch'], ['none', 'Original']]
+const BACKGROUND_FITS: [string, string][] = [['cover', 'Fill'], ['contain', 'Fit'], ['100% 100%', 'Stretch'], ['auto', 'Original']]
+
+function ReplaceImage({ store, id }: { store: DocumentStore; id: string }) {
+  const input = useRef<HTMLInputElement>(null)
+  return (
+    <div className="field" data-field="replace-image">
+      <span className="field-label" />
+      <div className="field-control">
+        <button type="button" data-testid="replace-image" onClick={() => input.current?.click()}>
+          Replace image
+        </button>
+        <input
+          ref={input}
+          type="file"
+          hidden
+          accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml"
+          onChange={(event) => {
+            const file = event.target.files?.[0]
+            event.target.value = ''
+            if (file && isPlaceableImage(file)) void replaceImage(store, id, file)
+          }}
+        />
+      </div>
     </div>
   )
 }
@@ -208,6 +238,8 @@ export const StylesPanel = memo(function StylesPanel({ store, nodes, selection, 
   }
 
   const allText = selected.every((node) => node.type === 'text')
+  const allImages = selected.every((node) => node.type === 'image')
+  const hasBackgroundImage = !allImages && selected.every((node) => !!node.style.backgroundImage && /url\(/.test(String(node.style.backgroundImage)))
   const anyArtboard = selected.some((node) => node.type === 'artboard')
   const absolute = sharedValue(selected, 'position') === 'absolute'
 
@@ -304,6 +336,21 @@ export const StylesPanel = memo(function StylesPanel({ store, nodes, selection, 
         />
         <NumberField editor={editor} property="opacity" label="Opacity" placeholder="1" />
       </Group>
+
+      {allImages && (
+        <Group title="Image">
+          <SelectField editor={editor} property="objectFit" label="Fit" options={IMAGE_FITS} />
+          <PositionField editor={editor} property="objectPosition" label="Position" />
+          {selected.length === 1 && <ReplaceImage store={store} id={selected[0].id} />}
+        </Group>
+      )}
+      {hasBackgroundImage && (
+        <Group title="Image">
+          <SelectField editor={editor} property="backgroundSize" label="Fit" options={BACKGROUND_FITS} />
+          <PositionField editor={editor} property="backgroundPosition" label="Position" />
+          <SelectField editor={editor} property="backgroundRepeat" label="Repeat" options={['no-repeat', 'repeat', 'repeat-x', 'repeat-y']} />
+        </Group>
+      )}
 
       <Group title="Border">
         <NumberField editor={editor} property="borderWidth" label="Width" placeholder="0" />

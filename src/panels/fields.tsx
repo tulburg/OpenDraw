@@ -503,3 +503,42 @@ function ShadowRow({ shadow, onChange, onRemove }: { shadow: string; onChange: (
     </div>
   )
 }
+
+/** The nine anchor positions, as CSS position keywords (S-26). */
+const ANCHORS = ['left top', 'center top', 'right top', 'left center', 'center center', 'right center', 'left bottom', 'center bottom', 'right bottom']
+
+/** `object-position` or `background-position`: a 3x3 anchor picker plus a free value. */
+export function PositionField({ editor, property, label }: { editor: StyleEditor; property: string; label: string }) {
+  const value = sharedValue(editor.nodes, property)
+  const current = value === MIXED ? '' : normalizePosition(value || 'center center')
+  return (
+    <>
+      <Row field={`${property}-anchor`} label={<span className="field-label">{label}</span>}>
+        <div className="anchor-grid" role="radiogroup" aria-label={label}>
+          {ANCHORS.map((anchor) => (
+            <button
+              key={anchor}
+              type="button"
+              role="radio"
+              aria-checked={current === anchor}
+              aria-label={anchor}
+              title={anchor}
+              data-anchor={anchor}
+              onClick={() => editor.commit({ [property]: anchor === 'center center' ? 'center' : anchor })}
+            />
+          ))}
+        </div>
+      </Row>
+      <TextField editor={editor} property={property} label="" placeholder="center" />
+    </>
+  )
+}
+
+/** Keyword positions in `x y` order, so `top left` and `left top` pick the same cell. */
+function normalizePosition(value: string): string {
+  const words = value.trim().split(/\s+/)
+  if (words.length === 1) words.push('center')
+  const vertical = (w: string) => w === 'top' || w === 'bottom'
+  if (vertical(words[0]) || (words[0] === 'center' && (words[1] === 'left' || words[1] === 'right'))) words.reverse()
+  return words.join(' ')
+}

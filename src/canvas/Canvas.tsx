@@ -37,6 +37,7 @@ import {
   isPlaceableImage,
   type Placement,
   placeImage,
+  replaceImage,
   type Tool,
   TOOL_BY_KEY
 } from './tools'
@@ -958,6 +959,12 @@ export function Canvas({
         const files = [...event.dataTransfer.files].filter(isPlaceableImage)
         if (files.length === 0) return
         event.preventDefault()
+        // Alt/Option + drop on an image layer swaps its picture instead of adding a layer (S-26 Req 4).
+        const onImage = (document.elementFromPoint(event.clientX, event.clientY) as HTMLElement | null)?.closest<HTMLElement>('[data-node-type="image"]')
+        if (event.altKey && onImage && !onImage.closest('[data-locked]')) {
+          void replaceImage(store, onImage.dataset.nodeId!, files[0])
+          return
+        }
         const parentId = containerOn(pathAt(document.elementFromPoint(event.clientX, event.clientY)), nodes)
         const point = canvasPoint(event)
         void addImage(files[0], placementFor(parentId, { ...point, width: 0, height: 0 }, true), containerSizeOf(parentId))

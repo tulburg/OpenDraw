@@ -1,12 +1,20 @@
 {
   "discussing": [
-    "S-18",
-    "S-19",
-    "S-20",
-    "S-21",
-    "Q-7"
+    "S-22",
+    "S-24",
+    "S-25",
+    "S-26",
+    "Q-8",
+    "Q-9",
+    "Q-10"
   ],
-  "next": [],
-  "note": "Next specs drafted: layers panel, arrange commands, packaging, performance",
-  "at": "2026-11-02T04:27:28.081Z"
+  "next": [
+    "S-22",
+    "S-23",
+    "S-24",
+    "S-26",
+    "S-25"
+  ],
+  "note": "S-22 redrafted with opendraw-asset://; S-23 approved",
+  "at": "2026-11-02T08:11:28.759Z"
 }

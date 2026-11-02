@@ -831,5 +831,36 @@
         "detail": "opendraw-mcp 0.1.0; 41 tools; dialog shows connected; claude mcp add opendraw -e ELECTRON_RUN_AS_NODE=1 -e OPENDRAW_MCP_DISCOVERY=/var/folders/pb/cr9x713s3r5fszkp11rsq2cr0000gn/T/opendraw-test-KVULPD/user-data/mcp.json -- /Users/tulburg/Developer/OpenDraw/release/mac-arm64/OpenDraw.app/Contents/MacOS/OpenDraw /Users/tulburg/Developer/OpenDraw/release/mac-arm64/OpenDraw.app/Contents/Resources/app.asar.unpacked/dist-electron/opendraw-mcp.mjs"
       }
     ]
+  },
+  "S-26": {
+    "at": "2026-11-02T08:23:28.036Z",
+    "running": false,
+    "results": [
+      {
+        "name": "Fit set to Fill on an image in a 200 x 200 box writes object-fit: cover and is not distorted",
+        "pass": true,
+        "detail": "left edge red when stretched, green (cropped, not squashed) with Fill; Fit leaves the top band empty"
+      },
+      {
+        "name": "Picking the top-left anchor writes object-position: left top",
+        "pass": true,
+        "detail": "object-position: left top; the crop moves to the left edge"
+      },
+      {
+        "name": "Replace keeps the layer ID and styles and changes only the image; one undo restores it",
+        "pass": true,
+        "detail": "same ID, name and styles; new picture; undo restores the old one"
+      },
+      {
+        "name": "A frame with a background image offers background-size fits that write the expected CSS",
+        "pass": true,
+        "detail": "cover, contain, 100% 100% written; get_jsx and get_computed_styles report size, repeat and position"
+      },
+      {
+        "name": "Alt + dropping an image file on an image layer replaces it instead of adding a layer",
+        "pass": true,
+        "detail": "picture replaced; no layer added"
+      }
+    ]
   }
 }

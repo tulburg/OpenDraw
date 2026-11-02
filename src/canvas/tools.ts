@@ -140,6 +140,12 @@ function svgSize(markup: string): { width: number; height: number } {
  * Places an image file at its natural size, scaled down to fit the container. SVG files become SVG
  * layers. On empty canvas the image gets an artboard of its own size.
  */
+/** Replaces an image layer's picture with `file`; an SVG file becomes an SVG data URL in the image. */
+export async function replaceImage(store: DocumentStore, id: string, file: File) {
+  const src = file.type === 'image/svg+xml' ? `data:image/svg+xml,${encodeURIComponent(sanitizeSvg(await readFile(file, 'text')))}` : await readFile(file, 'dataURL')
+  store.transact('Replace image', (tx) => tx.setImageSource(id, src))
+}
+
 export async function placeImage(
   store: DocumentStore,
   file: File,
@@ -175,3 +181,4 @@ export async function placeImage(
   layer.style = placedStyle(placement, size)
   return insert(store, placement, layer)
 }
+

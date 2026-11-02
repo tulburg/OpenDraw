@@ -214,3 +214,48 @@
 {"at":"2026-11-02T08:03:17.891Z","actor":"claude","action":"checks","card":"S-20","detail":"5 of 5 passed"}
 {"at":"2026-11-02T08:03:17.927Z","actor":"claude","action":"comment","card":"S-20","detail":"Built with electron-builder (D-7). `bun run dist` builds release/OpenDraw-0.1.0-arm64.dmg with our own icon (build/icon.svg) and the version from package.json; Windows (NSIS) and Linux (AppImage) targets are configured for those platforms but not built here. The app is ad-hoc signed only (signing and notarization are out of scope), so Gatekeeper will warn on first open. The bridge ships unpacked in the bundle and runs with the app binary as Node (ELECTRON_RUN_AS_NODE=1); it has --version and checks in every 5 s so the app can show an agent as connected. Connect an agent: Help menu and a button on the home view, with the claude mcp add command and the client JSON, each with Copy. About OpenDraw: version, MCP port, agent status, workspace. Data: the packaged app uses ~/Library/Application Support/OpenDraw and ~/Documents/OpenDraw; a dev build now uses OpenDraw Dev for both, so its Connect command adds OPENDRAW_MCP_DISCOVERY. Test: bun run test:package (5 checks); full suite passes."}
 {"at":"2026-11-02T08:03:17.961Z","actor":"claude","action":"status","card":"S-20","detail":"active -> done"}
+{"at":"2026-11-02T08:07:31.911Z","actor":"claude","action":"draft_spec","card":"S-22","detail":"Paper parity fixes: absolute asset paths and lock state"}
+{"at":"2026-11-02T08:07:51.816Z","actor":"claude","action":"draft_spec","card":"S-23","detail":"Clipboard with other apps: paste images, SVG and HTML; copy as HTML"}
+{"at":"2026-11-02T08:07:51.855Z","actor":"claude","action":"draft_spec","card":"S-24","detail":"File and View menus: new file, close tab, zoom commands"}
+{"at":"2026-11-02T08:08:10.555Z","actor":"claude","action":"draft_spec","card":"S-25","detail":"AI image generation with paper-gen:// URLs"}
+{"at":"2026-11-02T08:08:10.593Z","actor":"claude","action":"draft_spec","card":"S-26","detail":"Image layer controls: fit, position and replace"}
+{"at":"2026-11-02T08:08:28.747Z","actor":"claude","action":"ask","card":"Q-8","detail":"Absolute paper-asset:// paths: reference the file or copy it in?"}
+{"at":"2026-11-02T08:08:28.783Z","actor":"claude","action":"ask","card":"Q-9","detail":"Image generation provider for paper-gen://"}
+{"at":"2026-11-02T08:08:35.398Z","actor":"claude","action":"comment","card":"S-15","detail":"Review note: Req 1 and Req 3 still list AVIF, but D-6 took it out of S-15 and the format list. The built export has PNG, JPG, WEBP, SVG and PDF. If AVIF is wanted back it needs its own spec and an encoder choice (Q-6)."}
+{"at":"2026-11-02T08:08:35.433Z","actor":"claude","action":"status","card":"S-22","detail":"draft -> discussing"}
+{"at":"2026-11-02T08:08:35.466Z","actor":"claude","action":"status","card":"S-23","detail":"draft -> discussing"}
+{"at":"2026-11-02T08:08:35.500Z","actor":"claude","action":"status","card":"S-24","detail":"draft -> discussing"}
+{"at":"2026-11-02T08:08:35.533Z","actor":"claude","action":"status","card":"S-25","detail":"draft -> discussing"}
+{"at":"2026-11-02T08:08:35.567Z","actor":"claude","action":"status","card":"S-26","detail":"draft -> discussing"}
+{"at":"2026-11-02T08:08:35.600Z","actor":"claude","action":"focus","card":"S-22","detail":"discussing S-22, S-23, S-24, S-25, S-26, Q-8, Q-9; next S-22, S-23, S-24, S-26, S-25: Spec review: parity fixes, clipboard, menus, image controls, image generation"}
+{"at":"2026-11-02T08:10:45.165Z","actor":"user","action":"status","card":"S-22","detail":"discussing -> rejected: This is approved, but our name is opendraw not paper, it should reflect in the url as well"}
+{"at":"2026-11-02T08:11:03.754Z","actor":"user","action":"status","card":"S-23","detail":"discussing -> approved"}
+{"at":"2026-11-02T08:11:12.135Z","actor":"claude","action":"update","card":"S-22","detail":"title, body"}
+{"at":"2026-11-02T08:11:12.165Z","actor":"claude","action":"status","card":"S-22","detail":"rejected -> discussing"}
+{"at":"2026-11-02T08:11:12.196Z","actor":"claude","action":"comment","card":"S-22","detail":"Redrafted from the rejection: the scheme is now opendraw-asset://. Req 2 keeps paper-asset:// accepted on input (and rewrites old files) so agents that learned Paper still work, but nothing outputs it. Strike Req 2 if you want paper-asset:// refused outright."}
+{"at":"2026-11-02T08:11:22.850Z","actor":"claude","action":"update","card":"S-25","detail":"title, body"}
+{"at":"2026-11-02T08:11:22.885Z","actor":"claude","action":"ask","card":"Q-10","detail":"Rename the other Paper-named identifiers too?"}
+{"at":"2026-11-02T08:11:28.759Z","actor":"claude","action":"focus","card":"S-22","detail":"discussing S-22, S-24, S-25, S-26, Q-8, Q-9, Q-10; next S-22, S-23, S-24, S-26, S-25: S-22 redrafted with opendraw-asset://; S-23 approved"}
+{"at":"2026-11-02T08:11:30.557Z","actor":"user","action":"record","card":"D-8","detail":"answers Q-8: A. Copy the image into the design file's own assets when it is written; any file the user can read is allowed (recommended: designs stay self-contained, and an agent can only copy images in, never read other files out)"}
+{"at":"2026-11-02T08:11:30.558Z","actor":"auto","action":"status","card":"S-22","detail":"discussing -> approved (auto: all questions answered)"}
+{"at":"2026-11-02T08:11:47.976Z","actor":"user","action":"record","card":"D-9","detail":"answers Q-9: D. Leave image generation out for now and reject S-25"}
+{"at":"2026-11-02T08:11:47.978Z","actor":"auto","action":"status","card":"S-25","detail":"discussing -> approved (auto: all questions answered)"}
+{"at":"2026-11-02T08:11:52.491Z","actor":"claude","action":"comment","card":"S-25","detail":"D-9 says leave image generation out and reject this spec, but answering the last question auto-approved it. Only you can reject it: please reject S-25 on the board. I will not build it."}
+{"at":"2026-11-02T08:12:01.879Z","actor":"user","action":"record","card":"D-10","detail":"answers Q-10: A. Rename both to OpenDraw names (`<x-opendraw-clone>`, `opendraw-mcp-instructions`) and keep the Paper names as accepted aliases (recommended)"}
+{"at":"2026-11-02T08:12:05.016Z","actor":"user","action":"status","card":"S-26","detail":"discussing -> approved"}
+{"at":"2026-11-02T08:12:05.794Z","actor":"user","action":"status","card":"S-26","detail":"approved -> queued"}
+{"at":"2026-11-02T08:12:07.983Z","actor":"user","action":"status","card":"S-23","detail":"approved -> queued"}
+{"at":"2026-11-02T08:12:13.361Z","actor":"claude","action":"draft_spec","card":"S-27","detail":"OpenDraw names for the clone tag and the instructions guide"}
+{"at":"2026-11-02T08:12:13.391Z","actor":"claude","action":"link","card":"D-10","detail":"answers S-27"}
+{"at":"2026-11-02T08:12:13.421Z","actor":"claude","action":"status","card":"S-27","detail":"draft -> discussing"}
+{"at":"2026-11-02T08:12:20.164Z","actor":"claude","action":"status","card":"S-26","detail":"queued -> active"}
+{"at":"2026-11-02T08:12:21.558Z","actor":"user","action":"status","card":"S-27","detail":"discussing -> approved"}
+{"at":"2026-11-02T08:12:23.061Z","actor":"user","action":"status","card":"S-27","detail":"approved -> queued"}
+{"at":"2026-11-02T08:12:36.378Z","actor":"user","action":"status","card":"S-25","detail":"approved -> rejected: leave it out for now"}
+{"at":"2026-11-02T08:12:39.500Z","actor":"user","action":"status","card":"S-22","detail":"approved -> queued"}
+{"at":"2026-11-02T08:12:47.361Z","actor":"user","action":"status","card":"S-24","detail":"discussing -> approved"}
+{"at":"2026-11-02T08:12:48.544Z","actor":"user","action":"status","card":"S-24","detail":"approved -> queued"}
+{"at":"2026-11-02T08:12:53.488Z","actor":"claude","action":"resolve","card":"S-25","detail":"Left out per D-9; no image generation for now"}
+{"at":"2026-11-02T08:23:28.036Z","actor":"claude","action":"checks","card":"S-26","detail":"5 of 5 passed"}
+{"at":"2026-11-02T08:23:28.106Z","actor":"claude","action":"status","card":"S-26","detail":"active -> done"}
+{"at":"2026-11-02T08:23:36.777Z","actor":"claude","action":"comment","card":"S-26","detail":"Built. The styles panel has an Image group for image layers (Fit: Fill, Fit, Stretch, Original; a 3 x 3 anchor grid plus a free position field; Replace image) and the same group for frames with a background image (background-size, position and repeat). Replace keeps the layer's ID, name and styles and is one undo step; Alt + drop of an image file on an image layer replaces its picture. get_computed_styles now reports object-position and the background size, position and repeat. Checks: 5/5 in tests/images.test.ts; full suite 19/19 suites passing."}
