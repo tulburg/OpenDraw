@@ -205,6 +205,9 @@ async function createWindow() {
   })
   // Keep the window title fixed; the file name is shown in the top bar.
   win.on('page-title-updated', (event) => event.preventDefault())
+  // Tests drive the window over CDP. The real mouse passes through it, so a cursor over the window
+  // cannot slip a move into a synthetic drag and change where it lands.
+  if (process.env.OPENDRAW_TEST) win.setIgnoreMouseEvents(true)
   win.once('ready-to-show', () => win.show())
 
   mainWindow = win
