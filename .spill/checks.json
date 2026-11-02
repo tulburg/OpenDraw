@@ -487,5 +487,46 @@
         "detail": "picked up \"Dropped in\"; hidden files: .opendraw-index.json"
       }
     ]
+  },
+  "S-12": {
+    "at": "2026-11-02T03:38:11.827Z",
+    "running": false,
+    "results": [
+      {
+        "name": "Clicking + adds \"Page 2\" after the current page and shows it; Page 1 comes back with its viewport",
+        "pass": true,
+        "detail": "Page 1 viewport -240,-20.000000000000057,1 kept"
+      },
+      {
+        "name": "Renaming by double-click, reordering by drag and adding a divider are each one undo step",
+        "pass": true,
+        "detail": "three undo steps, each taking back one change"
+      },
+      {
+        "name": "Change icon and Duplicate from the menu; Delete asks first and is not offered for the last page",
+        "pass": true,
+        "detail": "icon arrow, duplicated and deleted \"Page 1 copy\" after confirming"
+      },
+      {
+        "name": "create_page adds a page without switching the user; update_pages sets a name and icon",
+        "pass": true,
+        "detail": "created 92314fe1-5fc4-4fbe-8201-9116c5dbc33e; renamed to Specs with table icon; Mobile icon reset"
+      },
+      {
+        "name": "arrange_pages rejects a missing ID with no change; a full order plus a divider reorders and returns its ID",
+        "pass": true,
+        "detail": "rejected: The order leaves out 7483a762-602e-4507-8431-96f58650ebb1; pass every page and divider; new divider 4e7f8d1d-3daf-44e5-9ff3-4e74d8f8fe62"
+      },
+      {
+        "name": "get_basic_info reflects order, names, icons and dividers, and survives a restart",
+        "pass": true,
+        "detail": "5 entries (2 dividers) after restart"
+      },
+      {
+        "name": "The last page cannot be deleted",
+        "pass": true,
+        "detail": "A file needs at least one page"
+      }
+    ]
   }
 }

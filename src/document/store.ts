@@ -2,7 +2,8 @@
 // undo step, and listeners re-render and autosave from the committed state.
 import { useSyncExternalStore } from 'react'
 
-import type { DesignDocument, DesignNode, Page, TextSpan } from '../../shared/document'
+import { type DesignDocument, type DesignNode, newId, type Page, type PageIcon, type TextSpan } from '../../shared/document'
+import { arrangePages, nextPageName, PageError } from '../../shared/pages'
 import { clearFromSpans } from './richtext'
 import { applyStyleUpdate, type StyleUpdate } from './styles'
 import * as tree from './tree'
@@ -173,6 +174,91 @@ export class Transaction {
     return { newId: copy.id, idMap }
   }
 
+  private pageIndex(pageId: string): number {
+    const index = this.document.pages.findIndex((p) => p.id === pageId)
+    if (index === -1) throw new EditError(`No page with ID ${pageId}`)
+    return index
+  }
+
+  /** Puts `page` at `index` among the pages; dividers below it move down with the pages. */
+  private insertPage(index: number, page: Page) {
+    const pages = [...this.document.pages]
+    pages.splice(index, 0, page)
+    const dividers = this.document.dividers?.map((d) => (d.index >= index ? { ...d, index: d.index + 1 } : d))
+    this.document = { ...this.document, pages, ...(dividers ? { dividers } : {}) }
+  }
+
+  /** Adds a page after `afterId` (or at the end) and returns its ID (S-12). */
+  addPage(args: { name?: string; icon?: PageIcon; afterId?: string } = {}): string {
+    const index = args.afterId ? this.pageIndex(args.afterId) + 1 : this.document.pages.length
+    const page: Page = { id: newId(), name: args.name?.trim() || nextPageName(this.document), ...(args.icon ? { icon: args.icon } : {}), nodes: [] }
+    this.insertPage(index, page)
+    return page.id
+  }
+
+  /** Renames a page or changes its icon; `icon: null` restores the default. */
+  updatePage(pageId: string, change: { name?: string; icon?: PageIcon | null }) {
+    const index = this.pageIndex(pageId)
+    const page = { ...this.document.pages[index] }
+    if (change.name !== undefined && change.name.trim()) page.name = change.name.trim()
+    if (change.icon === null) delete page.icon
+    else if (change.icon !== undefined) page.icon = change.icon
+    const before = this.document.pages[index]
+    if (page.name === before.name && page.icon === before.icon) return
+    const pages = [...this.document.pages]
+    pages[index] = page
+    this.document = { ...this.document, pages }
+  }
+
+  /** Copies a page and everything on it, with new IDs, right after it. */
+  duplicatePage(pageId: string): string {
+    const index = this.pageIndex(pageId)
+    const source = this.document.pages[index]
+    const idMap: Record<string, string> = {}
+    const page: Page = { ...source, id: newId(), name: `${source.name} copy`, nodes: source.nodes.map((n) => tree.cloneWithNewIds(n, idMap)) }
+    this.insertPage(index + 1, page)
+    return page.id
+  }
+
+  /** Deletes a page; the last page cannot go. */
+  deletePage(pageId: string) {
+    const index = this.pageIndex(pageId)
+    if (this.document.pages.length === 1) throw new EditError('A file needs at least one page')
+    const pages = this.document.pages.filter((p) => p.id !== pageId)
+    const dividers = this.document.dividers?.map((d) => (d.index > index ? { ...d, index: d.index - 1 } : d))
+    this.document = { ...this.document, pages, ...(dividers ? { dividers } : {}) }
+  }
+
+  /** Adds a divider below `afterPageId` and returns its ID. */
+  addDivider(afterPageId: string): string {
+    const index = this.pageIndex(afterPageId) + 1
+    const id = newId()
+    const dividers = [...(this.document.dividers ?? [])]
+    const at = dividers.findIndex((d) => d.index > index)
+    dividers.splice(at === -1 ? dividers.length : at, 0, { id, index })
+    this.document = { ...this.document, dividers }
+    return id
+  }
+
+  removeDivider(id: string) {
+    if (!this.document.dividers?.some((d) => d.id === id)) throw new EditError(`No divider with ID ${id}`)
+    this.document = { ...this.document, dividers: this.document.dividers.filter((d) => d.id !== id) }
+  }
+
+  /** Reorders pages and dividers (shared/pages.ts `arrangePages`); returns new divider IDs. */
+  arrangePages(order: (string | { type: 'divider' })[], removeDividerIds?: string[]): string[] {
+    try {
+      const result = arrangePages(this.document, order, removeDividerIds)
+      const same = JSON.stringify(result.document.pages.map((p) => p.id)) === JSON.stringify(this.document.pages.map((p) => p.id)) &&
+        JSON.stringify(result.document.dividers ?? []) === JSON.stringify(this.document.dividers ?? [])
+      if (!same) this.document = result.document
+      return result.newDividerIds
+    } catch (err) {
+      if (err instanceof PageError) throw new EditError(err.message)
+      throw err
+    }
+  }
+
   /** Sets the selection that this step leaves behind (and that redo restores). */
   select(ids: string[]) {
     this.selection = ids
@@ -202,6 +288,10 @@ export class DocumentStore {
   }
 
   private set(change: Partial<StoreState>, kind: ChangeKind) {
+    const document = change.document ?? this.state.document
+    const pageId = change.pageId ?? this.state.pageId
+    // An undo can take away the page in view; show the first page then.
+    if (!document.pages.some((p) => p.id === pageId)) change = { ...change, pageId: document.pages[0].id }
     this.state = {
       ...this.state,
       ...change,

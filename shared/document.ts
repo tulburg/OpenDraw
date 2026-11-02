@@ -25,10 +25,40 @@ export interface DesignNode {
   svg?: string
 }
 
+/** Paper's page icons (S-12 Req 4); a page without one shows the default. */
+export const PAGE_ICONS = [
+  'arrow',
+  'padlock',
+  'check',
+  'cross',
+  'info',
+  'question',
+  'design',
+  'vector',
+  'images',
+  'table',
+  'presentation',
+  'blueprint',
+  'swatches',
+  'bar-chart',
+  'line-chart',
+  'pie-chart',
+  'paper'
+] as const
+
+export type PageIcon = (typeof PAGE_ICONS)[number]
+
 export interface Page {
   id: string
   name: string
+  icon?: PageIcon
   nodes: DesignNode[]
+}
+
+/** A separator in the page list. `index` is the number of pages above it. */
+export interface PageDivider {
+  id: string
+  index: number
 }
 
 export interface DesignDocument {
@@ -37,6 +67,8 @@ export interface DesignDocument {
   id: string
   name: string
   pages: Page[]
+  /** Dividers in the page list, in order. */
+  dividers?: PageDivider[]
 }
 
 export interface Viewport {

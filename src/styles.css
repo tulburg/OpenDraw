@@ -990,3 +990,195 @@ body {
 .resource-card:hover .resource-action {
   visibility: visible;
 }
+
+/* The page list (S-12). */
+.pages-section {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+}
+
+.pages-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-right: 8px;
+}
+
+.icon-button {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.icon-button:hover {
+  background: var(--row-hover);
+  color: var(--text);
+}
+
+.icon-button svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.3;
+}
+
+.page-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 4px;
+}
+
+.page-list li.drop-before {
+  box-shadow: inset 0 2px 0 var(--accent);
+}
+
+.page-list li.drop-after {
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.page-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 4px;
+  cursor: default;
+}
+
+.page-row:hover {
+  background: var(--row-hover);
+}
+
+.page-row[data-active] {
+  background: var(--accent-soft);
+  font-weight: 600;
+}
+
+.page-icon {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.page-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.page-name-input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+}
+
+.page-divider {
+  padding: 4px 8px;
+}
+
+.page-divider hr {
+  margin: 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+
+.page-menu {
+  position: fixed;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  min-width: 160px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 6px 24px rgb(0 0 0 / 0.15);
+}
+
+.page-menu > button {
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+}
+
+.page-menu > button:hover {
+  background: var(--row-hover);
+}
+
+.page-menu .danger,
+.confirm-dialog .danger {
+  color: #e5484d;
+}
+
+.icon-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 26px);
+  gap: 2px;
+}
+
+.icon-grid button {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text);
+}
+
+.icon-grid button:hover {
+  background: var(--row-hover);
+}
+
+.confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  background: rgb(0 0 0 / 0.25);
+}
+
+.confirm-dialog {
+  width: 320px;
+  padding: 16px;
+  border-radius: 10px;
+  background: var(--panel);
+  box-shadow: 0 12px 40px rgb(0 0 0 / 0.25);
+}
+
+.confirm-dialog p {
+  margin: 0 0 16px;
+  line-height: 1.4;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.confirm-actions button {
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+}

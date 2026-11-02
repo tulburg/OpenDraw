@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react'
 
 import type { DesignNode } from '../../shared/document'
+import type { DocumentStore } from '../document/store'
+import { PagesList } from './PagesList'
 
 interface LayersPanelProps {
   nodes: DesignNode[]
@@ -49,7 +51,7 @@ function LayerRows({ nodes, depth, selection, onSelect }: LayersPanelProps & { d
   ))
 }
 
-export function LayersPanel({ nodes, selection, onSelect }: LayersPanelProps) {
+export function LayersPanel({ store, nodes, selection, onSelect }: LayersPanelProps & { store: DocumentStore }) {
   // Keep the first selected layer in view when the selection changes on the canvas (S-6 Req 7).
   const ref = useRef<HTMLElement>(null)
   useEffect(() => {
@@ -58,6 +60,7 @@ export function LayersPanel({ nodes, selection, onSelect }: LayersPanelProps) {
   }, [selection])
   return (
     <aside ref={ref} className="panel layers-panel" data-testid="layers-panel">
+      <PagesList store={store} />
       <div className="panel-title">Layers</div>
       {nodes.length === 0 ? (
         <div className="panel-empty">No layers on this page</div>

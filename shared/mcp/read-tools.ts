@@ -1,6 +1,7 @@
 // The read tools from S-4, as pure functions over a snapshot. Screenshots and computed styles need
 // a renderer and live in the main process.
 import type { DesignNode } from '../document'
+import { pageList } from '../pages'
 import { type JSXOptions, toJSX } from './jsx'
 import {
   layoutOf,
@@ -34,7 +35,11 @@ export function getBasicInfo(snapshot: Snapshot, args: { fileId?: string; pageId
     fileId: snapshot.document.id,
     fileName: fileName(snapshot),
     page: { id: page.id, name: page.name, isActive: page.id === snapshot.pageId },
-    pages: snapshot.document.pages.map((p) => ({ id: p.id, name: p.name, type: 'page', isActive: p.id === snapshot.pageId })),
+    pages: pageList(snapshot.document).map((item) =>
+      item.type === 'page'
+        ? { id: item.id, name: item.name, type: 'page', icon: item.icon ?? null, isActive: item.id === snapshot.pageId }
+        : { id: item.id, type: 'divider' }
+    ),
     nodeCount,
     artboards: page.nodes.map((node) => {
       const { worldX, worldY, width, height } = layoutOf(snapshot, node.id)

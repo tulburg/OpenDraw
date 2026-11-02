@@ -68,6 +68,20 @@ export function Editor({ opened, store, working, topBar, onViewState }: EditorPr
 
   useEffect(() => onViewState(viewport), [onViewState, viewport, pageId])
 
+  // Each page keeps its own viewport while the file is open (S-12 Req 1); a page not seen yet is fitted.
+  const pageViewports = useRef(new Map<string, Viewport>())
+  const shownPage = useRef(pageId)
+  useEffect(() => {
+    if (shownPage.current === pageId) return
+    setViewport((current) => {
+      if (current) pageViewports.current.set(shownPage.current, current)
+      const saved = pageViewports.current.get(pageId)
+      if (saved) return saved
+      return canvasSize.current ? fitViewport(nodes, canvasSize.current) : null
+    })
+    shownPage.current = pageId
+  }, [pageId, nodes])
+
   useEffect(() => {
     if (!viewport) return
     const timer = setTimeout(
@@ -120,7 +134,7 @@ export function Editor({ opened, store, working, topBar, onViewState }: EditorPr
   return (
     <div className="app" data-platform={window.opendraw.platform}>
       {topBar(viewport?.zoom ?? null)}
-      <LayersPanel nodes={nodes} selection={selection} onSelect={selectLayer} />
+      <LayersPanel store={store} nodes={nodes} selection={selection} onSelect={selectLayer} />
       {/* Nodes stay hidden until the viewport is known, so a new file never flashes unfitted. */}
       <Canvas
         store={store}

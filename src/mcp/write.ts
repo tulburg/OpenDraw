@@ -3,6 +3,7 @@
 import type { CSSStyle, DesignDocument, DesignNode } from '../../shared/document'
 import { newId } from '../../shared/document'
 import type { WriteToolName } from '../../shared/mcp/definitions'
+import { pageList } from '../../shared/pages'
 import { type DocumentStore, EditError, type Transaction } from '../document/store'
 import { applyStyleUpdate, type StyleUpdate } from '../document/styles'
 import { findNode } from '../document/tree'
@@ -245,6 +246,36 @@ export function runWriteTool(ctx: WriteContext, tool: WriteToolName, args: any):
       const ids: string[] | undefined = args.nodeIds
       const released = working.release(ids ? artboardsOf(state.document, ids) : undefined)
       return { released }
+    }
+
+    // Page tools (S-12) never switch the page the user is viewing.
+    case 'create_page': {
+      const pageId = store.transact('Agent: create page', (tx) => tx.addPage({ name: args.name, icon: args.icon, afterId: state.pageId }))
+      const page = store.getState().document.pages.find((p) => p.id === pageId)!
+      return { pageId, name: page.name, ...(page.icon ? { icon: page.icon } : {}) }
+    }
+
+    case 'update_pages': {
+      const updates: { pageId: string; name?: string; icon?: string | null }[] = args.updates
+      store.transact('Agent: update pages', (tx) => {
+        for (const u of updates) tx.updatePage(u.pageId, { name: u.name, icon: u.icon as never })
+      })
+      const pages = store.getState().document.pages
+      return {
+        pages: updates.map((u) => {
+          const page = pages.find((p) => p.id === u.pageId)!
+          return { pageId: page.id, name: page.name, icon: page.icon ?? null }
+        })
+      }
+    }
+
+    case 'arrange_pages': {
+      const newDividerIds = store.transact('Agent: arrange pages', (tx) => tx.arrangePages(args.order, args.removeDividerIds))
+      const viewing = store.getState().pageId
+      return {
+        pages: pageList(store.getState().document).map((item) => (item.type === 'page' ? { ...item, isActive: item.id === viewing } : item)),
+        ...(newDividerIds.length > 0 ? { newDividerIds } : {})
+      }
     }
   }
 }

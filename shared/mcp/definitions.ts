@@ -2,10 +2,15 @@
 // Descriptions are OpenDraw's own.
 import { z } from 'zod'
 
+import { PAGE_ICONS } from '../document'
+
 const fileId = z.string().describe('ID of the file to work on. Omit for the file open in OpenDraw.')
 const requiredFileId = z.string().describe('ID of the file to work on, from get_basic_info.')
 const pageId = z.string().describe('ID of the page to work on. Omit for the page the user is viewing.')
 const nodeId = z.string().describe('ID of the node.')
+const pageIcon = z
+  .enum(PAGE_ICONS)
+  .describe('Icon shown in the page list in place of the default. arrow marks a key page; design is a pencil over a ruler; paper (crumpled) marks old drafts.')
 
 export const SERVER_INSTRUCTIONS = `OpenDraw is a local design app. Its documents are CSS-native: every node is an HTML element with inline CSS, and that CSS is what gets saved.
 
@@ -191,6 +196,42 @@ Rules:
   delete_nodes: {
     description: 'Deletes nodes and everything inside them, in one undo step. Check a node with get_node_info before deleting it if you are unsure of its parent.',
     inputSchema: z.object({ fileId: requiredFileId, nodeIds: z.array(z.string()).min(1) }),
+    annotations: { readOnlyHint: false, destructiveHint: true }
+  },
+  create_page: {
+    description:
+      'Adds a page after the one the user is viewing and returns its pageId, without switching their page. Pass the pageId to other tools to work on it.',
+    inputSchema: z.object({
+      fileId: requiredFileId,
+      name: z.string().optional().describe('Name for the page. Defaults to "Page N".'),
+      icon: pageIcon.optional()
+    }),
+    annotations: { readOnlyHint: false, destructiveHint: false }
+  },
+  update_pages: {
+    description: 'Renames pages and changes their icons, in one undo step. Does not switch the page the user is viewing.',
+    inputSchema: z.object({
+      fileId: requiredFileId,
+      updates: z
+        .array(
+          z.object({
+            pageId: z.string().describe('ID of the page, from get_basic_info.'),
+            name: z.string().optional().describe('New name. Omit to keep it.'),
+            icon: pageIcon.nullable().optional().describe('New icon. Omit to keep it; null restores the default.')
+          })
+        )
+        .min(1)
+    }),
+    annotations: { readOnlyHint: false, destructiveHint: false }
+  },
+  arrange_pages: {
+    description:
+      'Reorders the page list and adds or removes dividers. Pass the complete new order: every page and divider ID from get_basic_info once (except dividers in removeDividerIds), with {"type": "divider"} where a new divider goes. A missing, unknown or repeated ID rejects the call with no change. Pages are never deleted. Returns the new list, with the IDs of new dividers.',
+    inputSchema: z.object({
+      fileId: requiredFileId,
+      order: z.array(z.union([z.string(), z.object({ type: z.literal('divider') })])),
+      removeDividerIds: z.array(z.string()).optional().describe('IDs of dividers to remove.')
+    }),
     annotations: { readOnlyHint: false, destructiveHint: true }
   },
   finish_working_on_nodes: {
