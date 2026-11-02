@@ -311,3 +311,19 @@
 {"at":"2026-11-02T13:40:39.701Z","actor":"claude","action":"update","card":"S-32","detail":"title, body, section"}
 {"at":"2026-11-02T13:40:46.380Z","actor":"claude","action":"comment","card":"S-32","detail":"Split per D-13. Req 1 (all tools but P) and Req 2 moved to S-35; Req 1 (P) and Req 3 to S-36; Req 4 and 5 to S-37; Req 6, 7 and 8 to S-38; Req 9 and 10 to S-39. No questions or decisions were on S-32, so none moved. Moved back to discussing while the parts are built; S-35 goes first once it is queued."}
 {"at":"2026-11-02T13:40:46.420Z","actor":"claude","action":"status","card":"S-32","detail":"queued -> discussing"}
+{"at":"2026-11-02T13:41:29.611Z","actor":"user","action":"status","card":"S-32","detail":"discussing -> approved"}
+{"at":"2026-11-02T13:41:31.520Z","actor":"user","action":"status","card":"S-32","detail":"approved -> queued"}
+{"at":"2026-11-02T13:41:42.099Z","actor":"claude","action":"comment","card":"S-32","detail":"Queued, but as the overview it has no requirements of its own to build. The work is in S-35 to S-39, which are still drafts. Approve and queue them (S-35 first) and I build them in that order; S-32 is done when they are."}
+{"at":"2026-11-02T13:42:11.288Z","actor":"user","action":"status","card":"S-35","detail":"draft -> approved"}
+{"at":"2026-11-02T13:42:13.028Z","actor":"user","action":"status","card":"S-35","detail":"approved -> queued"}
+{"at":"2026-11-02T13:42:14.871Z","actor":"user","action":"status","card":"S-36","detail":"draft -> approved"}
+{"at":"2026-11-02T13:42:16.194Z","actor":"user","action":"status","card":"S-36","detail":"approved -> queued"}
+{"at":"2026-11-02T13:42:18.487Z","actor":"user","action":"status","card":"S-37","detail":"draft -> approved"}
+{"at":"2026-11-02T13:42:19.410Z","actor":"user","action":"status","card":"S-37","detail":"approved -> queued"}
+{"at":"2026-11-02T13:42:20.999Z","actor":"user","action":"status","card":"S-38","detail":"draft -> approved"}
+{"at":"2026-11-02T13:42:22.087Z","actor":"user","action":"status","card":"S-38","detail":"approved -> queued"}
+{"at":"2026-11-02T13:42:23.677Z","actor":"user","action":"status","card":"S-39","detail":"draft -> approved"}
+{"at":"2026-11-02T13:42:24.704Z","actor":"user","action":"status","card":"S-39","detail":"approved -> queued"}
+{"at":"2026-11-02T13:42:25.297Z","actor":"claude","action":"status","card":"S-35","detail":"queued -> active"}
+{"at":"2026-11-02T13:45:47.230Z","actor":"claude","action":"comment","card":"S-35","detail":"Reqs 1-5 built in 0019eb5: new-file artboards and frames wrapped outside a flex parent have no layout; R and O draw doop's rectangle and circle (#d9d9d9, 120 px on a click, circles stay round, an artboard of their own on empty canvas); the Layout section has a Flex layout toggle for frames and artboards (on: positioned children join the flow in row order; off: each child stays where it was, positioned at its rendered size). Agent create_artboard keeps its documented flex column default (Paper). Typechecked only: the acceptance checks have not been run because tests are paused. Back to discussing until they can run."}
+{"at":"2026-11-02T13:45:47.275Z","actor":"claude","action":"status","card":"S-35","detail":"active -> discussing"}
