@@ -5,6 +5,13 @@ import { type CSSStyle, type DesignNode, newId, type TextSpan } from '../../shar
 import { safeImageSrc, sanitizeSvg } from '../document/media'
 import { normalizeSpans, plainText, spanStyle } from '../document/richtext'
 import { applyStyleUpdate } from '../document/styles'
+import { cloneWithNewIds } from '../document/tree'
+
+/** An <x-paper-clone> that names a node that does not exist; the whole write fails (S-17 Req 3). */
+export class CloneError extends Error {}
+
+/** Finds the node an <x-paper-clone node-id> copies. */
+export type CloneSource = (id: string) => DesignNode | null
 
 export interface ParsedHTML {
   nodes: DesignNode[]
@@ -38,8 +45,7 @@ const DROPPED_TAGS: Record<string, string> = {
   canvas: 'canvas elements are not supported',
   input: 'form controls are not supported; draw them with divs',
   select: 'form controls are not supported; draw them with divs',
-  textarea: 'form controls are not supported; draw them with divs',
-  'x-paper-clone': 'the clone tag is not supported yet; use duplicate_nodes'
+  textarea: 'form controls are not supported; draw them with divs'
 }
 
 /** What a plain browser would show for these tags, so the design matches the HTML as written. */
@@ -200,6 +206,26 @@ function richText(spans: TextSpan[]): Pick<DesignNode, 'text' | 'spans'> {
 class Converter {
   dropped: string[] = []
 
+  constructor(private cloneSource?: CloneSource) {}
+
+  /** A copy of an existing node with new IDs; style and layer-name on the tag override its root. */
+  clone(el: Element): DesignNode {
+    const id = el.getAttribute('node-id')?.trim() ?? ''
+    const source = id ? this.cloneSource?.(id) : null
+    if (!source) throw new CloneError(id ? `<x-paper-clone>: no node with ID ${id}` : '<x-paper-clone> needs a node-id attribute')
+    const copy = cloneWithNewIds(source)
+    if (copy.type === 'artboard') {
+      // An artboard copied into a layer becomes a frame; its canvas position no longer applies.
+      const { left: _l, top: _t, ...style } = copy.style
+      copy.type = 'frame'
+      copy.style = style
+    }
+    if (el.hasAttribute('style')) copy.style = this.style(el, copy.type, copy.style)
+    const layerName = el.getAttribute('layer-name')
+    if (layerName) copy.name = truncate(layerName)
+    return copy
+  }
+
   /** The element's tag defaults, then its inline style, with inert properties dropped and reported. */
   style(el: Element, type: DesignNode['type'], base: CSSStyle = {}): CSSStyle {
     const update: CSSStyle = { ...(TAG_DEFAULTS[el.localName] ?? {}) }
@@ -236,12 +262,13 @@ class Converter {
       this.dropped.push(`${describe(el)}: ${DROPPED_TAGS[tag]}`)
       return null
     }
+    if (tag === 'x-paper-clone') return this.clone(el)
 
     if (tag === 'img') {
       const style = this.sizeFromAttributes(el, this.style(el, 'image'))
       const src = el.getAttribute('src') ?? ''
       const safe = safeImageSrc(src)
-      if (src && !safe) this.dropped.push(`src on ${describe(el)}: only http, https and data: image URLs are supported`)
+      if (src && !safe) this.dropped.push(`src on ${describe(el)}: only http, https, paper-asset and data: image URLs are supported`)
       const name = layerName ?? el.getAttribute('alt') ?? 'Image'
       return { id: newId(), type: 'image', name: truncate(name), style, children: [], ...(safe ? { src: safe } : {}) }
     }
@@ -306,9 +333,11 @@ class Converter {
   }
 }
 
-export function parseHTML(html: string): ParsedHTML {
-  const doc = new DOMParser().parseFromString(`<body>${html}</body>`, 'text/html')
-  const converter = new Converter()
+export function parseHTML(html: string, cloneSource?: CloneSource): ParsedHTML {
+  // HTML has no self-closing custom elements; <x-paper-clone /> would swallow its siblings.
+  const source = html.replace(/<x-paper-clone\b([^>]*?)\/>/gi, '<x-paper-clone$1></x-paper-clone>')
+  const doc = new DOMParser().parseFromString(`<body>${source}</body>`, 'text/html')
+  const converter = new Converter(cloneSource)
   const nodes = converter.children(doc.body)
   return { nodes, dropped: converter.dropped }
 }

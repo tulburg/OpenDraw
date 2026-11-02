@@ -7,6 +7,7 @@ import { DocumentStore } from './document/store'
 import { Editor, measureNode } from './Editor'
 import { FileBrowser } from './files/FileBrowser'
 import { buildSnapshot } from './mcp/snapshot'
+import { localFamilies } from './fonts/loader'
 import { WorkingIndicators } from './mcp/working'
 import { runWriteTool } from './mcp/write'
 import { TopBar } from './panels/TopBar'
@@ -156,6 +157,7 @@ export function App() {
       const measure = isActive(tab) ? measureNode : () => null
       return runWriteTool({ store: tab.store, working: tab.working, measure }, tool, args)
     })
+    const offFonts = window.opendraw.handleMainRequest('fonts:local', async () => [...(await localFamilies()).values()])
     const offAdd = window.opendraw.handleMainRequest('workspace:add-tab', (payload) => {
       const { opened, activate } = payload as { opened: OpenedDocument; activate: boolean }
       openTab(opened, activate)
@@ -172,6 +174,7 @@ export function App() {
       offSnapshot()
       offWrite()
       offAdd()
+      offFonts()
       offMoved()
     }
   }, [openTab])

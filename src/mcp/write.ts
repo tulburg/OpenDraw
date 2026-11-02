@@ -7,7 +7,7 @@ import { pageList } from '../../shared/pages'
 import { type DocumentStore, EditError, type Transaction } from '../document/store'
 import { applyStyleUpdate, type StyleUpdate } from '../document/styles'
 import { findNode } from '../document/tree'
-import { parseHTML, parseInlineText } from './html'
+import { CloneError, parseHTML, parseInlineText } from './html'
 import { placeArtboard } from './placement'
 import type { WorkingIndicators } from './working'
 
@@ -97,7 +97,20 @@ export function runWriteTool(ctx: WriteContext, tool: WriteToolName, args: any):
     }
 
     case 'write_html': {
-      const { nodes, dropped } = parseHTML(String(args.html))
+      let parsed: ReturnType<typeof parseHTML>
+      try {
+        parsed = parseHTML(String(args.html), (id) => {
+          for (const page of state.document.pages) {
+            const found = findNode(page.nodes, id)
+            if (found) return found
+          }
+          return null
+        })
+      } catch (err) {
+        if (err instanceof CloneError) throw new EditError(err.message)
+        throw err
+      }
+      const { nodes, dropped } = parsed
       if (nodes.length === 0) {
         throw new EditError(`The HTML produced no nodes.${dropped.length ? ` Dropped: ${dropped.join('; ')}` : ''}`)
       }

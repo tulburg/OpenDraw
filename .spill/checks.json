@@ -661,5 +661,36 @@
         "detail": "pin followed by 60.0, 40.0; kept at 189, 159 after delete"
       }
     ]
+  },
+  "S-17": {
+    "at": "2026-11-02T04:23:35.114Z",
+    "running": false,
+    "results": [
+      {
+        "name": "get_font_family_info: Inter, an installed family and \"Not A Font\"",
+        "pass": true,
+        "detail": "Inter 9 weights (installed,google-fonts), Menlo 400,700 (installed), Not A Font unavailable"
+      },
+      {
+        "name": "A Google Fonts family used in update_styles renders on the canvas and in get_screenshot",
+        "pass": true,
+        "detail": "Lobster: canvas 363 -> 322 px, screenshot render 363 -> 322 px"
+      },
+      {
+        "name": "get_guide returns the instructions; an unknown topic lists the topics",
+        "pass": true,
+        "detail": "No guide on \"figma-import\". Topics: \"paper-mcp-instructions\" (How to work with OpenDraw's tools, start to finish), \"mobile-status-bar\" (Paste-ready status bar markup for mobile artboards)."
+      },
+      {
+        "name": "write_html with x-paper-clone inserts a copy with new IDs and the overridden width; a bad node ID changes nothing",
+        "pass": true,
+        "detail": "{\"parentId\":\"desktop\",\"created\":[{\"id\":\"702cec2a-de50-4f45-9014-d8b05ca233d1\",\"name\":\"Wide card\",\"type\":\"frame\",\"childre; bad: <x-paper-clone>: no node with ID missing"
+      },
+      {
+        "name": "paper-asset://images/logo.png renders on the canvas and in a screenshot; paper-asset://../secret.png does not load",
+        "pass": true,
+        "detail": "logo 8px wide, screenshot 255,0,0; secret refused (403)"
+      }
+    ]
   }
 }

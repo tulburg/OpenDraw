@@ -42,6 +42,7 @@ const api = {
   /** A file's saved document, for thumbnails in the file browser. */
   readFile: (id: string): Promise<DesignDocument> => ipcRenderer.invoke('workspace:read-file', id),
   /** The export folder the user picked, or null before they pick one (S-15). */
+  googleFonts: (): Promise<{ family: string; faces: { weight: number; style: 'normal' | 'italic' }[] }[] | null> => ipcRenderer.invoke('fonts:google'),
   userName: (): Promise<string | null> => ipcRenderer.invoke('user:name'),
   setUserName: (name: string): Promise<void> => ipcRenderer.invoke('user:set-name', name),
   exportDir: (): Promise<string | null> => ipcRenderer.invoke('export:dir'),

@@ -1,4 +1,5 @@
 // get_fill_image (S-15 Req 7): an image layer's picture as JPEG, sized for a model to read.
+import { ASSET_SCHEME, readAsset } from '../assets'
 import { nativeImage } from 'electron'
 
 import type { DesignNode } from '../../shared/document'
@@ -25,6 +26,7 @@ async function load(url: string): Promise<Buffer> {
     const data = url.slice(comma + 1)
     return meta.endsWith(';base64') ? Buffer.from(data, 'base64') : Buffer.from(decodeURIComponent(data))
   }
+  if (url.startsWith(`${ASSET_SCHEME}://`)) return readAsset(url)
   if (/^https?:\/\//.test(url)) {
     const response = await fetch(url)
     if (!response.ok) throw new Error(`Could not load ${url}: HTTP ${response.status}`)

@@ -16,6 +16,9 @@ import {
 } from '@modelcontextprotocol/server'
 import { app, type BrowserWindow } from 'electron'
 
+import { familiesIn, type FontFace, sortFaces } from '../../shared/fonts'
+import { guide } from '../../shared/guides'
+import { googleFonts } from '../fonts'
 import { exportTools, readTools, resourceTools, SERVER_INSTRUCTIONS, writeTools } from '../../shared/mcp/definitions'
 import * as read from '../../shared/mcp/read-tools'
 import { layoutOf, requireFile, requireNode, requirePage, type Snapshot, ToolError, walk } from '../../shared/mcp/snapshot'
@@ -97,6 +100,57 @@ function buildServer({ getWindow, renderTarget }: ServerDeps): McpServer {
       tool(async (args: any) => text((run as (s: Snapshot, a: unknown) => unknown)(await snapshot(args?.fileId), args)))
     )
   }
+
+  server.registerTool(
+    'get_guide',
+    { description: readTools.get_guide.description, inputSchema: readTools.get_guide.inputSchema, annotations: { readOnlyHint: true } },
+    tool(async ({ topic }: { topic: string }) => {
+      const result = guide(topic)
+      if ('error' in result) throw new ToolError(result.error)
+      return { content: [{ type: 'text', text: result.text }] }
+    })
+  )
+
+  server.registerTool(
+    'get_font_family_info',
+    {
+      description: readTools.get_font_family_info.description,
+      inputSchema: readTools.get_font_family_info.inputSchema,
+      annotations: { readOnlyHint: true }
+    },
+    tool(async ({ fileId, familyNames }: { fileId: string; familyNames: string[] }) => {
+      const snap = await snapshot(fileId)
+      requireFile(snap, fileId)
+      const local = await requestRenderer<{ family: string; faces: FontFace[] }[]>(getWindow()!.webContents, 'fonts:local').catch(() => [])
+      const installed = new Map(local.map((f) => [f.family.toLowerCase(), f]))
+      let google: Awaited<ReturnType<typeof googleFonts>> | null = null
+      let googleError: string | undefined
+      try {
+        google = await googleFonts()
+      } catch (err) {
+        googleError = err instanceof Error ? err.message : String(err)
+      }
+      const used = new Set([...familiesIn(snap.document.pages), ...familiesIn(snap.document.tokens)].map((f) => f.toLowerCase()))
+      const families = familyNames.map((name) => {
+        const key = name.trim().replace(/^["']|["']$/g, '').toLowerCase()
+        const mine = installed.get(key)
+        const remote = google?.get(key)
+        const found = mine ?? remote
+        const sources = [...(mine ? ['installed'] : []), ...(remote ? ['google-fonts'] : [])]
+        const faces = sortFaces([...(mine?.faces ?? []), ...(remote?.faces ?? [])])
+        return {
+          familyName: found?.family ?? name,
+          available: !!found,
+          sources,
+          usedInFile: used.has(key),
+          weights: [...new Set(faces.map((f) => f.weight))],
+          styles: faces.map((f) => ({ weight: f.weight, style: f.style })),
+          ...(!found && googleError ? { note: `${googleError}; only installed fonts were checked.` } : {})
+        }
+      })
+      return text({ families, ...(googleError ? { googleFonts: googleError } : {}) })
+    })
+  )
 
   server.registerTool(
     'get_computed_styles',

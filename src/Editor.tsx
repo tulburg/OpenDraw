@@ -2,7 +2,9 @@ import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } fro
 
 import type { CSSStyle, OpenedDocument, Viewport } from '../shared/document'
 import { Canvas } from './canvas/Canvas'
+import { familiesIn } from '../shared/fonts'
 import { TokensContext } from './canvas/NodeView'
+import { ensureFonts } from './fonts/loader'
 import { tokenStyle } from '../shared/tokens'
 import { fitViewport, nextZoomStep, zoomAt } from './canvas/viewport'
 import { type DocumentStore, useStore } from './document/store'
@@ -56,6 +58,11 @@ export function Editor({ opened, store, working, topBar, onViewState }: EditorPr
 
   const nodes = doc.pages.find((p) => p.id === pageId)?.nodes ?? []
   const tokens = useMemo(() => tokenStyle(doc.tokens), [doc.tokens])
+  // Google Fonts families in use load on demand (S-17 Req 1).
+  const families = useMemo(() => [...familiesIn(doc.pages), ...familiesIn(doc.tokens)].sort().join('\n'), [doc.pages, doc.tokens])
+  useEffect(() => {
+    if (families) void ensureFonts(families.split('\n'))
+  }, [families])
 
   const fit = useCallback(() => {
     if (canvasSize.current) setViewport(fitViewport(nodes, canvasSize.current))

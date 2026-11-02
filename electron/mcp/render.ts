@@ -13,6 +13,9 @@ let loading: Promise<BrowserWindow> | null = null
 /** Renders run one at a time; each one resizes and redraws the shared window. */
 let queue: Promise<unknown> = Promise.resolve()
 
+/** The render window's session; paper-asset URLs are served there too (S-17). */
+export const RENDER_PARTITION = 'opendraw-render'
+
 export interface RenderTarget {
   preload: string
   devServer?: string
@@ -35,7 +38,7 @@ function load(target: RenderTarget): Promise<BrowserWindow> {
         offscreen: true,
         // Its own session: Electron shares zoom per origin within a session, so without this the
         // zoom used for scaled screenshots would also zoom the editor window.
-        partition: 'opendraw-render',
+        partition: RENDER_PARTITION,
         backgroundThrottling: false
       },
       // Transparent, so exported layers keep their transparency (S-15 Req 3).

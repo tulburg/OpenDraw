@@ -4,7 +4,9 @@
 import { useEffect, useLayoutEffect, useState } from 'react'
 
 import type { DesignNode } from '../../shared/document'
+import { familiesIn } from '../../shared/fonts'
 import { NodeView } from '../canvas/NodeView'
+import { ensureFonts } from '../fonts/loader'
 
 const nextFrame = () => new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)))
 
@@ -99,12 +101,12 @@ export function RenderView() {
     const offs = [
       window.opendraw.handleMainRequest('render:show', (payload) => {
         const node = payload as DesignNode
-        return new Promise<void>((resolve) => {
+        return ensureFonts(familiesIn(node)).then(() => new Promise<void>((resolve) => {
           isolate(null)
           setPrint(null)
           setArtboard(atOrigin(node))
           setPainted(() => resolve)
-        })
+        }))
       }),
       window.opendraw.handleMainRequest('render:isolate', async (payload) => {
         const { nodeId } = payload as { nodeId: string | null }
@@ -123,12 +125,12 @@ export function RenderView() {
       // Lays out one PDF page per item, each the size of its layer (S-15 Req 4 and 6).
       window.opendraw.handleMainRequest('render:print', (payload) => {
         const items = (payload as { items: PrintItem[] }).items
-        return new Promise<void>((resolve) => {
+        return ensureFonts(familiesIn(items.map((i) => i.artboard))).then(() => new Promise<void>((resolve) => {
           isolate(null)
           setArtboard(null)
           setPrint({ items: items.map((i) => ({ ...i, artboard: atOrigin(i.artboard) })), boxes: null })
           setPainted(() => resolve)
-        })
+        }))
       })
     ]
     return () => offs.forEach((off) => off())
@@ -146,11 +148,13 @@ export function RenderView() {
     setPrint({ ...print, boxes })
   }, [print])
 
-  // Resolve once the new tree is committed (and measured, for print), fonts are loaded and two frames have painted.
+  // Resolve once the new tree is committed (and measured, for print), fonts and images are loaded and two frames have painted.
   useEffect(() => {
     if (!painted || (print && !print.boxes)) return
     void (async () => {
       await document.fonts.ready
+      // Images load after the tree commits; a failed one just stays empty.
+      await Promise.all([...document.querySelectorAll<HTMLImageElement>('.render-root img')].map((img) => img.decode().catch(() => {})))
       await nextFrame()
       await nextFrame()
       painted()

@@ -4,8 +4,10 @@ import { fileURLToPath } from 'node:url'
 import { app, BrowserWindow, dialog, ipcMain, Menu, screen } from 'electron'
 
 import type { DesignDocument, Viewport } from '../shared/document'
-import { closeRenderWindow, renderTargetFor } from './mcp/render'
+import { closeRenderWindow, RENDER_PARTITION, renderTargetFor } from './mcp/render'
 import { startMcpServer } from './mcp/server'
+import { handleAssets, registerAssetScheme } from './assets'
+import { googleFonts } from './fonts'
 import { exportDir, type ExportItem, runExports } from './export'
 import { exportNode } from './mcp/render'
 import * as resources from './resource-tools'
@@ -22,6 +24,8 @@ import {
   updateState,
   workspace
 } from './workspace'
+
+registerAssetScheme()
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const DEFAULT_SIZE = { width: 1440, height: 900 }
@@ -194,6 +198,13 @@ async function chooseExportDir(win: BrowserWindow | null): Promise<string | null
   })
   return dir
 }
+ipcMain.handle('fonts:google', async () => {
+  try {
+    return [...(await googleFonts()).values()]
+  } catch {
+    return null
+  }
+})
 ipcMain.handle('user:name', async () => (await readState()).userName ?? null)
 ipcMain.handle('user:set-name', (_event, name: string) =>
   updateState((s) => {
@@ -252,6 +263,7 @@ if (process.env.OPENDRAW_TEST) {
 }
 
 app.whenReady().then(async () => {
+  handleAssets([RENDER_PARTITION])
   buildMenu()
   await createWindow()
   try {

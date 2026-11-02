@@ -1,8 +1,8 @@
 // Images and SVG come from agents and from files on disk, so both are checked before they reach the DOM.
 
-const IMAGE_SRC = /^(https?:\/\/|data:image\/(png|jpe?g|gif|webp|avif|svg\+xml)[;,])/i
+const IMAGE_SRC = /^(https?:\/\/|paper-asset:\/\/|data:image\/(png|jpe?g|gif|webp|avif|svg\+xml)[;,])/i
 
-/** The URL if it is one the canvas will load (http, https or a data: image), otherwise null. */
+/** The URL if it is one the canvas will load (http, https, paper-asset or a data: image), otherwise null. */
 export function safeImageSrc(src: string | undefined): string | null {
   return src && IMAGE_SRC.test(src.trim()) ? src.trim() : null
 }

@@ -21,6 +21,7 @@ export const SERVER_INSTRUCTIONS = `OpenDraw is a local design app. Its document
 
 - A file has pages; a page holds artboards (top-level frames positioned on the canvas with left/top); artboards hold frames, text, images and SVG.
 - Layout is flexbox with padding and gap. Absolute positioning is for decoration. Margins, grid, inline display and tables are not supported.
+- Read get_guide({ topic: "paper-mcp-instructions" }) once per session before other tools.
 - Start with get_basic_info to learn the pages, artboards and sizes, and get_tree_summary to see structure before reading details.
 - Sizes and positions come from the live canvas. They are null for nodes on pages the user is not viewing.
 - get_computed_styles and get_screenshot render the node fresh, independent of the user's zoom and scroll.`
@@ -112,6 +113,16 @@ export const readTools = {
       'Lists every user who started a comment thread or wrote a visible message, with user ID, display name, thread and message counts and last activity time. Use it to turn a name into a userId for list_comment_threads filters.',
     inputSchema: z.object({ fileId: requiredFileId, pageId: z.string().optional().describe('Only count activity on this page.') })
   },
+  get_guide: {
+    description:
+      'Reads a guide. Call with topic "paper-mcp-instructions" before using other tools for best results. Other topics: "mobile-status-bar" (paste-ready status bar markup for mobile artboards).',
+    inputSchema: z.object({ topic: z.string().describe('The guide topic: "paper-mcp-instructions" or "mobile-status-bar".') })
+  },
+  get_font_family_info: {
+    description:
+      'Whether font families are available, and every weight and style in each. Looks up fonts installed on this machine and Google Fonts; a Google Fonts family loads into OpenDraw the first time a style uses it. Call before your first typographic styling.',
+    inputSchema: z.object({ fileId: requiredFileId, familyNames: z.array(z.string()).min(1).describe('Names of the font families to look up.') })
+  },
   get_jsx: {
     description:
       'The node and its descendants as JSX, with inline styles (default) or Tailwind classes. Node IDs are included as id attributes unless includeNodeIds is false; pass false to get clean code for a codebase.',
@@ -170,7 +181,8 @@ Rules:
 - Inline styles only (style="..."). Layout is flexbox with padding and gap; absolute positioning is for decoration. display: block is fine for simple elements, not for layout containers. Sizing is border-box.
 - Not supported, dropped and listed in the response: margin, display: grid and grid properties, display: inline (and inline-block, inline-flex), tables, scripts, style elements and form controls.
 - layer-name="Hero" sets the layer name.
-- <img src> takes http, https or data: image URLs. <svg> is kept as vector markup. <pre> or white-space: pre keeps whitespace.
+- <x-paper-clone node-id="..."></x-paper-clone> inserts a copy of an existing node with new IDs; style and layer-name on the tag override the copy's root style and name. A missing node ID fails the whole call.
+- <img src> and background-image take http, https, data: image and paper-asset://<path> URLs (a path relative to the workspace folder). <svg> is kept as vector markup. <pre> or white-space: pre keeps whitespace.
 - An element holding only text becomes a text node. Formatting on part of the text (a <b> or a styled <span> inside a <p>) is kept as rich text; a run can carry only text styles (color, font, weight, style, size, letter-spacing, line-height, text-transform, text-decoration, text stroke, and backgrounds with background-clip: text), and other properties on it are dropped and reported.`,
     inputSchema: z.object({
       fileId: requiredFileId,
