@@ -10,6 +10,8 @@ const ICONS: Record<Tool, ReactNode> = {
   ),
   artboard: <path d="M6 3v14M14 3v14M3 6h14M3 14h14" />,
   frame: <rect x="4" y="4" width="12" height="12" rx="1" />,
+  rectangle: <rect x="4" y="5.5" width="12" height="9" />,
+  circle: <circle cx="10" cy="10" r="6" />,
   text: <path d="M5 5h10M10 5v11M7.5 16h5" />,
   image: (
     <>

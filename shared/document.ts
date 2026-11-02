@@ -213,9 +213,7 @@ export function createFirstDocument(): DesignDocument {
               top: '0px',
               width: '1440px',
               height: '900px',
-              backgroundColor: '#ffffff',
-              display: 'flex',
-              flexDirection: 'column'
+              backgroundColor: '#ffffff'
             },
             children: []
           }

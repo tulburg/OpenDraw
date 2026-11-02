@@ -1,6 +1,7 @@
 // Arrange commands on layers (S-18 Req 7, S-19). Positions come from the canvas DOM, in layout units.
 import { type CSSStyle, type DesignNode, newId } from '../../shared/document'
 import { type DocumentStore, EditError, Transaction } from '../document/store'
+import type { StyleUpdate } from '../document/styles'
 
 const px = (v: number) => `${Math.round(v)}px`
 
@@ -34,9 +35,9 @@ export function canWrap(store: DocumentStore, ids: string[]): boolean {
 }
 
 /**
- * Puts sibling layers in a new frame at their place. In-flow layers get a flex frame that takes their
- * place in the flow, with the parent's direction and gap; absolutely positioned layers get a positioned
- * frame at their combined bounds and keep their canvas positions.
+ * Puts sibling layers in a new frame at their place. In a flex parent, in-flow layers get a flex frame
+ * with the parent's direction and gap; absolutely positioned layers get a positioned frame at their
+ * combined bounds and keep their canvas positions.
  */
 export function wrapInFrame(store: DocumentStore, ids: string[], canvas: ParentNode = canvasWorld()): string {
   const { parentId, parent, nodes } = siblings(store, ids)
@@ -59,9 +60,9 @@ export function wrapInFrame(store: DocumentStore, ids: string[], canvas: ParentN
   } else {
     const parentEl = element(parent.id)
     const parentStyle = parentEl ? getComputedStyle(parentEl) : null
+    // In a flex parent the frame takes the parent's direction and gap; elsewhere it has no layout (S-35).
     const flex = parentStyle?.display === 'flex' || parent.style.display === 'flex'
-    const direction = String(parent.style.flexDirection ?? (flex ? 'row' : 'column'))
-    frame.style = { display: 'flex', flexDirection: direction, ...(flex && parent.style.gap ? { gap: parent.style.gap } : {}) }
+    if (flex) frame.style = { display: 'flex', flexDirection: String(parent.style.flexDirection ?? 'row'), ...(parent.style.gap ? { gap: parent.style.gap } : {}) }
   }
   const order = new Transaction(store.getState().document).childrenOf(parentId).map((c) => c.id)
   const sorted = [...ids].sort((a, b) => order.indexOf(a) - order.indexOf(b))
@@ -305,4 +306,55 @@ function reorder(store: DocumentStore, ids: string[], parentId: string, command:
     tx.select(ids)
   })
   return null
+}
+
+const FLEX_PROPERTIES = ['display', 'flexDirection', 'flexWrap', 'alignItems', 'justifyContent', 'gap', 'rowGap', 'columnGap'] as const
+
+/**
+ * Turns flex layout on or off for frames and artboards (S-35 Req 4). On, positioned children join the
+ * flow in the order they sit along the row. Off, every child stays where it was drawn, as a positioned
+ * layer at its rendered size.
+ */
+export function setFlexLayout(store: DocumentStore, ids: string[], on: boolean, canvas: ParentNode = canvasWorld()) {
+  const tx0 = new Transaction(store.getState().document)
+  const containers = ids.map((id) => tx0.node(id)).filter((n) => n.type === 'frame' || n.type === 'artboard')
+  const el = (id: string) => canvas.querySelector<HTMLElement>(`[data-node-id="${CSS.escape(id)}"]`)
+  const zoom = Number((canvas as HTMLElement).dataset?.zoom) || 1
+  const moves: Record<string, StyleUpdate> = {}
+  const orders: Record<string, string[]> = {}
+  for (const container of containers) {
+    const parentEl = el(container.id)
+    if (!parentEl) continue
+    const origin = parentEl.getBoundingClientRect()
+    const boxes = container.children.map((child) => {
+      const r = el(child.id)?.getBoundingClientRect()
+      return {
+        id: child.id,
+        x: r ? (r.left - origin.left) / zoom - parentEl.clientLeft : 0,
+        y: r ? (r.top - origin.top) / zoom - parentEl.clientTop : 0,
+        w: r ? r.width / zoom : 0,
+        h: r ? r.height / zoom : 0
+      }
+    })
+    if (on) {
+      orders[container.id] = [...boxes].sort((a, b) => a.x - b.x || a.y - b.y).map((b) => b.id)
+      for (const child of container.children) {
+        if (child.style.position === 'absolute') moves[child.id] = { position: null, left: null, top: null, right: null, bottom: null }
+      }
+    } else {
+      for (const b of boxes) moves[b.id] = { position: 'absolute', left: px(b.x), top: px(b.y), width: px(b.w), height: px(b.h), flex: null, flexGrow: null, alignSelf: null }
+    }
+  }
+  store.transact(on ? 'Add flex layout' : 'Remove flex layout', (tx) => {
+    for (const container of containers) {
+      if (on) {
+        tx.updateStyles([container.id], { display: 'flex' })
+        if (orders[container.id]?.length) tx.moveNodes(orders[container.id], container.id, 0)
+      } else {
+        tx.updateStyles([container.id], Object.fromEntries(FLEX_PROPERTIES.map((p) => [p, null])))
+        if (container.type === 'frame' && !container.style.position && container.children.length > 0) tx.updateStyles([container.id], { position: 'relative' })
+      }
+    }
+    for (const [id, style] of Object.entries(moves)) tx.updateStyles([id], style)
+  })
 }

@@ -33,6 +33,7 @@ import {
   containerOn,
   drawArtboard,
   drawFrame,
+  drawShape,
   drawText,
   isPlaceableImage,
   type Placement,
@@ -95,7 +96,7 @@ type Gesture = { pointerId: number; startX: number; startY: number; active: bool
   | { kind: 'padding'; id: string; side: Side; origin: Record<Side, number>; angle: number }
   | { kind: 'gap'; id: string; axis: 'x' | 'y'; origin: number; angle: number }
   | { kind: 'marquee'; base: string[]; rect: Rect }
-  | { kind: 'draw'; tool: 'artboard' | 'frame' | 'text' | 'image'; parentId: string | null; rect: Rect; start: { x: number; y: number }; targets: Rect[] }
+  | { kind: 'draw'; tool: 'artboard' | 'frame' | 'rectangle' | 'circle' | 'text' | 'image'; parentId: string | null; rect: Rect; start: { x: number; y: number }; targets: Rect[] }
 )
 
 /** Gestures that end by writing their preview styles, with their undo labels. */
@@ -534,6 +535,7 @@ export function Canvas({
       imageInput.current?.click()
     } else if (draw.tool === 'artboard') drawArtboard(store, placement)
     else if (draw.tool === 'frame') drawFrame(store, placement)
+    else if (draw.tool === 'rectangle' || draw.tool === 'circle') drawShape(store, placement, draw.tool)
     else {
       const id = drawText(store, placement)
       setEditing({ id, fresh: true })
@@ -578,7 +580,7 @@ export function Canvas({
       return
     }
 
-    if (tool === 'artboard' || tool === 'frame' || tool === 'text' || tool === 'image') {
+    if (tool === 'artboard' || tool === 'frame' || tool === 'rectangle' || tool === 'circle' || tool === 'text' || tool === 'image') {
       const container = tool === 'artboard' ? null : containerOn(pathAt(target), nodes)
       // A frame drawn on empty canvas becomes an artboard; text needs a container.
       if (tool === 'text' && !container) return
@@ -839,7 +841,8 @@ export function Canvas({
       case 'draw': {
         const point = canvasPoint(event)
         if (!snapOff(event)) Object.assign(point, { x: snapValue(point.x, next.targets, 'x'), y: snapValue(point.y, next.targets, 'y') })
-        const rect = drawnRect(next.start, point, event.shiftKey, event.altKey)
+        // Circles stay round, as in doop; Shift keeps other boxes square.
+        const rect = drawnRect(next.start, point, event.shiftKey || next.tool === 'circle', event.altKey)
         setGuides(snapOff(event) ? [] : guidesForBox(rect, next.targets))
         next = { ...next, rect }
         break

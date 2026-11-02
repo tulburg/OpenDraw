@@ -4,13 +4,15 @@ import { sanitizeSvg } from '../document/media'
 import type { DocumentStore } from '../document/store'
 import { findNode } from '../document/tree'
 
-export type Tool = 'select' | 'hand' | 'artboard' | 'frame' | 'text' | 'image' | 'comment'
+export type Tool = 'select' | 'hand' | 'artboard' | 'frame' | 'rectangle' | 'circle' | 'text' | 'image' | 'comment'
 
 export const TOOLS: { tool: Tool; name: string; key: string }[] = [
   { tool: 'select', name: 'Select', key: 'V' },
   { tool: 'hand', name: 'Hand', key: 'H' },
   { tool: 'artboard', name: 'Artboard', key: 'A' },
   { tool: 'frame', name: 'Frame', key: 'F' },
+  { tool: 'rectangle', name: 'Rectangle', key: 'R' },
+  { tool: 'circle', name: 'Circle', key: 'O' },
   { tool: 'text', name: 'Text', key: 'T' },
   { tool: 'image', name: 'Image', key: 'I' },
   { tool: 'comment', name: 'Comment', key: 'C' }
@@ -21,6 +23,9 @@ export const TOOL_BY_KEY: Record<string, Tool> = Object.fromEntries(TOOLS.map((t
 export const DEFAULT_ARTBOARD = { width: 1440, height: 900 }
 export const DEFAULT_FRAME = { width: 100, height: 100 }
 const FRAME_FILL = '#e5e5e5'
+/** Doop's shape fill and click size (src/lib/drawing.ts). */
+const SHAPE_FILL = '#d9d9d9'
+export const DEFAULT_SHAPE = { width: 120, height: 120 }
 
 const px = (value: number) => `${Math.round(value)}px`
 
@@ -93,6 +98,21 @@ export function drawFrame(store: DocumentStore, placement: Placement): string {
     style: { ...placedStyle(placement, size), backgroundColor: FRAME_FILL },
     children: []
   })
+}
+
+/**
+ * A rectangle or circle (S-35 Req 1): a frame with doop's fill, positioned where it was drawn. On empty
+ * canvas it is an artboard of its own, as doop draws a standalone element.
+ */
+export function drawShape(store: DocumentStore, placement: Placement, shape: 'rectangle' | 'circle'): string {
+  const size = placement.clicked ? DEFAULT_SHAPE : placement.box
+  const look: CSSStyle = { backgroundColor: SHAPE_FILL, ...(shape === 'circle' ? { borderRadius: '50%' } : {}) }
+  const name = shape === 'circle' ? 'Circle' : 'Rectangle'
+  if (placement.parentId === null) {
+    const { left, top } = placement.box
+    return insert(store, placement, { id: newId(), type: 'artboard', name, style: { left: px(left), top: px(top), width: px(size.width), height: px(size.height), ...look }, children: [] })
+  }
+  return insert(store, placement, { id: newId(), type: 'frame', name, style: { ...placedStyle(placement, size), ...look }, children: [] })
 }
 
 /** An empty text layer, auto-width on a click or fixed-width on a drag. Editing starts right after. */

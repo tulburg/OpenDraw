@@ -6,6 +6,7 @@ import type { CSSStyle, DesignNode, Token } from '../../shared/document'
 import { type DocumentStore, useStore } from '../document/store'
 import type { StyleUpdate } from '../document/styles'
 import { findNode } from '../document/tree'
+import { setFlexLayout } from '../canvas/arrange'
 import { isPlaceableImage, replaceImage } from '../canvas/tools'
 import { documentColors, documentFonts, kebab, MIXED, parseRawCSS, rawCSS, sharedValue } from './css-values'
 import { ExportSection } from './ExportSection'
@@ -242,6 +243,8 @@ export const StylesPanel = memo(function StylesPanel({ store, nodes, selection, 
   const hasBackgroundImage = !allImages && selected.every((node) => !!node.style.backgroundImage && /url\(/.test(String(node.style.backgroundImage)))
   const anyArtboard = selected.some((node) => node.type === 'artboard')
   const absolute = sharedValue(selected, 'position') === 'absolute'
+  const containers = selected.every((node) => node.type === 'frame' || node.type === 'artboard')
+  const flex = sharedValue(selected, 'display') === 'flex'
 
   return (
     <aside className="panel styles-panel" data-testid="styles-panel">
@@ -257,28 +260,44 @@ export const StylesPanel = memo(function StylesPanel({ store, nodes, selection, 
       )}
 
       <Group title="Layout">
-        <SelectField editor={editor} property="display" label="Display" options={['flex', 'block', 'none']} />
-        <SelectField
-          editor={editor}
-          property="flexDirection"
-          label="Direction"
-          options={[['row', 'Row'], ['column', 'Column'], ['row-reverse', 'Row reverse'], ['column-reverse', 'Column reverse']]}
-        />
-        <SelectField editor={editor} property="flexWrap" label="Wrap" options={['nowrap', 'wrap', 'wrap-reverse']} />
-        <SelectField
-          editor={editor}
-          property="alignItems"
-          label="Align"
-          options={['flex-start', 'center', 'flex-end', 'stretch', 'baseline']}
-        />
-        <SelectField
-          editor={editor}
-          property="justifyContent"
-          label="Justify"
-          options={['flex-start', 'center', 'flex-end', 'space-between', 'space-around', 'space-evenly']}
-        />
-        <NumberField editor={editor} property="gap" label="Gap" placeholder="0" />
-        <NumberField editor={editor} property="padding" label="Padding" placeholder="0" />
+        {containers ? (
+          // Frames have no layout until flex is turned on, like auto layout (S-35 Req 4).
+          <label className="field toggle" data-field="flex-layout">
+            <input
+              type="checkbox"
+              checked={flex}
+              onChange={(event) => setFlexLayout(store, selected.map((node) => node.id), event.target.checked)}
+            />
+            <span className="field-label">Flex layout</span>
+          </label>
+        ) : (
+          <SelectField editor={editor} property="display" label="Display" options={['flex', 'block', 'none']} />
+        )}
+        {(flex || !containers) && (
+          <>
+            <SelectField
+              editor={editor}
+              property="flexDirection"
+              label="Direction"
+              options={[['row', 'Row'], ['column', 'Column'], ['row-reverse', 'Row reverse'], ['column-reverse', 'Column reverse']]}
+            />
+            <SelectField editor={editor} property="flexWrap" label="Wrap" options={['nowrap', 'wrap', 'wrap-reverse']} />
+            <SelectField
+              editor={editor}
+              property="alignItems"
+              label="Align"
+              options={['flex-start', 'center', 'flex-end', 'stretch', 'baseline']}
+            />
+            <SelectField
+              editor={editor}
+              property="justifyContent"
+              label="Justify"
+              options={['flex-start', 'center', 'flex-end', 'space-between', 'space-around', 'space-evenly']}
+            />
+            <NumberField editor={editor} property="gap" label="Gap" placeholder="0" />
+            <NumberField editor={editor} property="padding" label="Padding" placeholder="0" />
+          </>
+        )}
       </Group>
 
       <Group title="Size">
