@@ -100,11 +100,14 @@ function childRect(child: HTMLElement, container: HTMLElement): Rect {
 
 export function handleInfoOf(el: HTMLElement, node: DesignNode): HandleInfo {
   const style = getComputedStyle(el)
+  // A percentage (a circle's 50%) is of the box; the drawn radius never passes half the short side.
+  const side = Math.min(el.offsetWidth, el.offsetHeight)
+  const radius = (value: string) => Math.min(side / 2, value.trim().endsWith('%') ? (side * parsePx(value)) / 100 : parsePx(value))
   const radii = {
-    nw: parsePx(style.borderTopLeftRadius),
-    ne: parsePx(style.borderTopRightRadius),
-    se: parsePx(style.borderBottomRightRadius),
-    sw: parsePx(style.borderBottomLeftRadius)
+    nw: radius(style.borderTopLeftRadius),
+    ne: radius(style.borderTopRightRadius),
+    se: radius(style.borderBottomRightRadius),
+    sw: radius(style.borderBottomLeftRadius)
   }
   const border = {
     left: parsePx(style.borderLeftWidth),
