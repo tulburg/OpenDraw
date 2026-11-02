@@ -327,3 +327,11 @@
 {"at":"2026-11-02T13:42:25.297Z","actor":"claude","action":"status","card":"S-35","detail":"queued -> active"}
 {"at":"2026-11-02T13:45:47.230Z","actor":"claude","action":"comment","card":"S-35","detail":"Reqs 1-5 built in 0019eb5: new-file artboards and frames wrapped outside a flex parent have no layout; R and O draw doop's rectangle and circle (#d9d9d9, 120 px on a click, circles stay round, an artboard of their own on empty canvas); the Layout section has a Flex layout toggle for frames and artboards (on: positioned children join the flow in row order; off: each child stays where it was, positioned at its rendered size). Agent create_artboard keeps its documented flex column default (Paper). Typechecked only: the acceptance checks have not been run because tests are paused. Back to discussing until they can run."}
 {"at":"2026-11-02T13:45:47.275Z","actor":"claude","action":"status","card":"S-35","detail":"active -> discussing"}
+{"at":"2026-11-02T14:06:16.977Z","actor":"claude","action":"ask","card":"Q-17","detail":"Should rectangles and circles hold layers drawn on them?"}
+{"at":"2026-11-02T14:14:07.045Z","actor":"user","action":"record","card":"D-14","detail":"answers Q-17: No, they shouldn’t hold objects"}
+{"at":"2026-11-02T14:14:07.051Z","actor":"auto","action":"status","card":"S-35","detail":"discussing -> approved (auto: all questions answered)"}
+{"at":"2026-11-02T14:14:12.514Z","actor":"user","action":"status","card":"S-35","detail":"approved -> queued"}
+{"at":"2026-11-02T14:14:26.179Z","actor":"claude","action":"status","card":"S-35","detail":"queued -> active"}
+{"at":"2026-11-02T14:15:03.622Z","actor":"claude","action":"update","card":"S-35","detail":"body"}
+{"at":"2026-11-02T14:21:22.979Z","actor":"claude","action":"comment","card":"S-35","detail":"Reqs 1-6 done and verified: tests/shapes.test.ts 12/12 (0e52523). Also fixed while testing: corner-radius drag reverting on screen (a7d65c4), percentage radii (8cddf3d), a drag inside the selection moves the selection (c4caf12), a selected frame outlines its children (d2a9a81). Note: tests/interactions.test.ts failed intermittently on the final tree; per the user, old suites are no longer run, so that is unexamined."}
+{"at":"2026-11-02T14:21:23.015Z","actor":"claude","action":"status","card":"S-35","detail":"active -> done"}
