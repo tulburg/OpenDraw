@@ -269,7 +269,7 @@ class Converter {
       const style = this.sizeFromAttributes(el, this.style(el, 'image'))
       const src = el.getAttribute('src') ?? ''
       const safe = safeImageSrc(src)
-      if (src && !safe) this.dropped.push(`src on ${describe(el)}: only http, https, paper-asset and data: image URLs are supported`)
+      if (src && !safe) this.dropped.push(`src on ${describe(el)}: only http, https, opendraw-asset and data: image URLs are supported`)
       const name = layerName ?? el.getAttribute('alt') ?? 'Image'
       return { id: newId(), type: 'image', name: truncate(name), style, children: [], ...(safe ? { src: safe } : {}) }
     }

@@ -1,5 +1,5 @@
 // End-to-end acceptance checks for S-17 (agent helpers): get_font_family_info and Google Fonts on
-// demand, get_guide, <x-paper-clone> in write_html, and paper-asset:// URLs. Run with `bun run test:helpers`.
+// demand, get_guide, <x-paper-clone> in write_html, and local image URLs (paper-asset:// input, stored as opendraw-asset://). Run with `bun run test:helpers`.
 import { mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 
@@ -121,31 +121,31 @@ try {
     return `${JSON.stringify(result).slice(0, 120)}; bad: ${bad.content[0].text}`
   })
 
-  await check('paper-asset://images/logo.png renders on the canvas and in a screenshot; paper-asset://../secret.png does not load', async () => {
+  await check('paper-asset://images/logo.png renders on the canvas and in a screenshot; paper-asset://../secret.png fails the write and does not load', async () => {
     const written = await call('write_html', {
       targetNodeId: 'desktop',
       mode: 'insert-children',
-      html: '<div layer-name="Assets" style="display: flex; gap: 10px"><img layer-name="Logo" src="paper-asset://images/logo.png" style="width: 40px; height: 40px" /><img layer-name="Secret" src="paper-asset://../secret.png" style="width: 40px; height: 40px" /></div>'
+      html: '<div layer-name="Assets" style="display: flex; gap: 10px"><img layer-name="Logo" src="paper-asset://images/logo.png" style="width: 40px; height: 40px" /></div>'
     })
-    const list = written.created[0].children
-    const logo = list.find((n: any) => n.name === 'Logo')
-    const secret = list.find((n: any) => n.name === 'Secret')
+    const logo = written.created[0].children.find((n: any) => n.name === 'Logo')
+    const secret = await client.callRaw('write_html', { fileId, targetNodeId: 'desktop', mode: 'insert-children', html: '<img layer-name="Secret" src="paper-asset://../secret.png" />' })
+    const secretError = secret.content?.[0]?.text ?? ''
+    expect(secret.isError && secretError.includes('../secret.png'), secretError)
     await sleep(300)
     const size = (id: string) => app.eval<number>(`document.querySelector('[data-node-id="${id}"] img, img[data-node-id="${id}"]')?.naturalWidth ?? -1`)
     const logoWidth = await size(logo.id)
-    const secretWidth = await size(secret.id)
-    expect(logoWidth === 8 && secretWidth === 0, `logo ${logoWidth}, secret ${secretWidth}`)
+    expect(logoWidth === 8, `logo ${logoWidth}`)
     const shot = await client.callRaw('get_screenshot', { fileId, nodeId: logo.id })
     const img = readPNG(Buffer.from(shot.content[0].data, 'base64'))
     const [r, g, b] = img.pixel(Math.floor(img.width / 2), Math.floor(img.height / 2))
     expect(r > 240 && g < 15 && b < 15, `screenshot center ${r},${g},${b}`)
     const jsx = String(await call('get_jsx', { nodeId: logo.id }))
-    expect(jsx.includes('paper-asset://images/logo.png'), jsx)
+    expect(jsx.includes('opendraw-asset://images/logo.png') && !jsx.includes('paper-asset'), jsx)
     const fill = await client.callRaw('get_fill_image', { fileId, nodeId: logo.id })
     expect(!fill.isError, JSON.stringify(fill).slice(0, 200))
-    const refused = await app.eval<number>(`fetch('paper-asset://../secret.png').then((r) => r.status, () => -1)`)
+    const refused = await app.eval<number>(`fetch('opendraw-asset://../secret.png').then((r) => r.status, () => -1)`)
     expect(refused === 403 || refused === -1, `fetch status ${refused}`)
-    return `logo ${logoWidth}px wide, screenshot ${r},${g},${b}; secret refused (${refused})`
+    return `logo ${logoWidth}px wide, screenshot ${r},${g},${b}; secret write failed (${secretError}); fetch refused (${refused})`
   })
 } finally {
   client.close()

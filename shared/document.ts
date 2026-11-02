@@ -115,6 +115,8 @@ export interface DesignDocument {
   tokens?: Token[]
   /** Comment threads (S-16), oldest first. */
   comments?: CommentThread[]
+  /** Images copied into the file (S-22), by key: opendraw-asset://<key> names one. Base64 data. */
+  assets?: Record<string, { type: string; data: string }>
 }
 
 /** The local user's ID: OpenDraw is single-user, and agents only read comments. */
@@ -162,6 +164,30 @@ export interface OpenedDocument {
 }
 
 export const DOCUMENT_EXTENSION = '.opendraw'
+
+/** Local images (S-22): opendraw-asset://<path>. Paper's paper-asset:// is accepted on input and rewritten. */
+export const ASSET_SCHEME = 'opendraw-asset'
+export const LEGACY_ASSET_SCHEME = 'paper-asset'
+
+/** A value with any paper-asset:// URL rewritten to opendraw-asset://. */
+export function withAssetScheme(value: string): string {
+  return value.includes(`${LEGACY_ASSET_SCHEME}://`) ? value.replaceAll(`${LEGACY_ASSET_SCHEME}://`, `${ASSET_SCHEME}://`) : value
+}
+
+/** A document whose image sources and styles use opendraw-asset://; the same object when nothing changed. */
+export function migrateAssetUrls(document: DesignDocument): DesignDocument {
+  let changed = false
+  const node = (n: DesignNode): DesignNode => {
+    const src = n.src === undefined ? undefined : withAssetScheme(n.src)
+    const style = Object.fromEntries(Object.entries(n.style).map(([k, v]) => [k, typeof v === 'string' ? withAssetScheme(v) : v]))
+    const children = n.children.map(node)
+    if (src === n.src && Object.entries(style).every(([k, v]) => n.style[k] === v) && children.every((c, i) => c === n.children[i])) return n
+    changed = true
+    return { ...n, ...(src === undefined ? {} : { src }), style, children }
+  }
+  const pages = document.pages.map((page) => ({ ...page, nodes: page.nodes.map(node) }))
+  return changed ? { ...document, pages } : document
+}
 
 export function newId(): string {
   return crypto.randomUUID()

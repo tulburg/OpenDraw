@@ -3,8 +3,9 @@ import { readFile } from 'node:fs/promises'
 
 import type { BrowserWindow } from 'electron'
 
-import type { DesignDocument, OpenedDocument } from '../shared/document'
+import { type DesignDocument, migrateAssetUrls, type OpenedDocument } from '../shared/document'
 import type { Snapshot } from '../shared/mcp/snapshot'
+import { registerAssets, withEmbeddedAssets } from './embedded'
 import { type Resource, ResourceError } from './resources'
 import { requestRenderer } from './rpc'
 import { openFileById, tabs, workspace } from './workspace'
@@ -66,12 +67,17 @@ async function latestDocument(id: string, getWindow: () => BrowserWindow | null)
 export async function readSavedDocument(id: string): Promise<DesignDocument> {
   const resource = workspace().get(id) ?? (await workspace().scan(), workspace().get(id))
   if (!resource || resource.type !== 'file') throw new ResourceError(`No file with ID ${id}`)
-  return JSON.parse(await readFile(resource.path, 'utf8')) as DesignDocument
+  const document = JSON.parse(await readFile(resource.path, 'utf8')) as DesignDocument
+  registerAssets(document)
+  const { assets: _assets, ...rest } = migrateAssetUrls(document)
+  return rest
 }
 
 export async function createFile(args: { name?: string; parentId?: string; cloneFileId?: string }, getWindow: () => BrowserWindow | null) {
   await workspace().scan()
-  const clone = args.cloneFileId ? await latestDocument(args.cloneFileId, getWindow) : undefined
+  const latest = args.cloneFileId ? await latestDocument(args.cloneFileId, getWindow) : undefined
+  if (latest) registerAssets(latest)
+  const clone = latest && withEmbeddedAssets(latest)
   return brief(await workspace().createFile({ name: args.name, parentId: args.parentId, clone }))
 }
 

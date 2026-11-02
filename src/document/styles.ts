@@ -1,6 +1,6 @@
 // Which CSS a node accepts. OpenDraw follows Paper's rules: flex, padding and gap for layout,
 // absolute positioning for decoration; no margins, grid, inline display or tables.
-import type { CSSStyle, DesignNode } from '../../shared/document'
+import { type CSSStyle, type DesignNode, withAssetScheme } from '../../shared/document'
 
 export type StyleUpdate = Record<string, string | number | null>
 
@@ -37,6 +37,7 @@ function inertReason(property: string, value: string | number, node: DesignNode,
  * effect in this node's context are left out and returned in `ignored` with the reason.
  */
 export function applyStyleUpdate(node: DesignNode, update: StyleUpdate) {
+  update = Object.fromEntries(Object.entries(update).map(([property, value]) => [property, typeof value === 'string' ? withAssetScheme(value) : value]))
   const merged: CSSStyle = { ...node.style }
   for (const [property, value] of Object.entries(update)) {
     if (value === null) delete merged[property]

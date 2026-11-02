@@ -924,5 +924,41 @@
         "detail": "41 tool descriptions and the instructions use only the OpenDraw names"
       }
     ]
+  },
+  "S-22": {
+    "at": "2026-11-02T08:48:20.664Z",
+    "running": false,
+    "results": [
+      {
+        "name": "A file saved with paper-asset:// URLs opens with the image showing and is rewritten to opendraw-asset://",
+        "pass": true,
+        "detail": "image loaded (8px); the document and the file on disk use opendraw-asset://"
+      },
+      {
+        "name": "paper-asset:// written by an agent is stored as opendraw-asset://, and nothing reads back paper-asset://",
+        "pass": true,
+        "detail": "img and background stored as opendraw-asset://; get_jsx has no paper-asset; screenshot 255,0,0"
+      },
+      {
+        "name": "An absolute path outside the workspace is copied into the file and renders on the canvas and in get_screenshot",
+        "pass": true,
+        "detail": "stored as opendraw-asset://0e7f5fdedce0832d.png (paper-asset:// gives the same copy); screenshot 0,0,255; the file holds one copy"
+      },
+      {
+        "name": "With the source file deleted, the design still shows the copied image after the app restarts",
+        "pass": true,
+        "detail": "image 12px wide from the file's own copy; get_fill_image works"
+      },
+      {
+        "name": "A missing path or a file that is not an image fails the write, naming the path, and changes nothing",
+        "pass": true,
+        "detail": "opendraw-asset://images/nope.png does not exist; opendraw-asset:///var/folders/pb/cr9x713s3r5fszkp11rsq2cr0000gn/T/opendraw-assets-37657/gone.png does not exist; opendraw-asset://images/notes.txt is not an image (PNG, JPEG, GIF, WebP, AVIF or SVG)"
+      },
+      {
+        "name": "get_node_info reports locked for a layer locked in the panel and for its child; unlocking reports false",
+        "pass": true,
+        "detail": "card, title: false,false -> true,true -> false,false"
+      }
+    ]
   }
 }

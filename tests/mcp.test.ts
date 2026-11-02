@@ -65,8 +65,7 @@ try {
     expect(missing.length === 0, `missing: ${missing}`)
     const notReadOnly = tools.filter((t: any) => READ_TOOLS.includes(t.name) && !t.annotations?.readOnlyHint)
     expect(notReadOnly.length === 0, `not read-only: ${notReadOnly.map((t: any) => t.name)}`)
-    // Paper-compatible identifiers (paper-asset://) are not branding.
-    const branded = tools.filter((t: any) => /paper/i.test(t.description.replace(/paper-asset/g, '')))
+    const branded = tools.filter((t: any) => /paper/i.test(t.description))
     expect(branded.length === 0, `Paper named in: ${branded.map((t: any) => t.name)}`)
     return READ_TOOLS.join(', ')
   })

@@ -182,7 +182,7 @@ Rules:
 - Not supported, dropped and listed in the response: margin, display: grid and grid properties, display: inline (and inline-block, inline-flex), tables, scripts, style elements and form controls.
 - layer-name="Hero" sets the layer name.
 - <x-opendraw-clone node-id="..."></x-opendraw-clone> inserts a copy of an existing node with new IDs; style and layer-name on the tag override the copy's root style and name. A missing node ID fails the whole call.
-- <img src> and background-image take http, https, data: image and paper-asset://<path> URLs (a path relative to the workspace folder). <svg> is kept as vector markup. <pre> or white-space: pre keeps whitespace.
+- <img src> and background-image take http, https, data: image and opendraw-asset:// URLs. opendraw-asset:///Users/name/logo.png (an absolute path) copies that image into the design file, so it keeps showing if the original moves; opendraw-asset://images/logo.png (relative) uses the file in the workspace folder. A path that does not exist or is not an image fails the call. <svg> is kept as vector markup. <pre> or white-space: pre keeps whitespace.
 - An element holding only text becomes a text node. Formatting on part of the text (a <b> or a styled <span> inside a <p>) is kept as rich text; a run can carry only text styles (color, font, weight, style, size, letter-spacing, line-height, text-transform, text-decoration, text stroke, and backgrounds with background-clip: text), and other properties on it are dropped and reported.`,
     inputSchema: z.object({
       fileId: requiredFileId,

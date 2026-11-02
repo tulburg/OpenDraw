@@ -1,10 +1,14 @@
 // Images and SVG come from agents and from files on disk, so both are checked before they reach the DOM.
+import { withAssetScheme } from '../../shared/document'
 
-const IMAGE_SRC = /^(https?:\/\/|paper-asset:\/\/|data:image\/(png|jpe?g|gif|webp|avif|svg\+xml)[;,])/i
+const IMAGE_SRC = /^(https?:\/\/|opendraw-asset:\/\/|paper-asset:\/\/|data:image\/(png|jpe?g|gif|webp|avif|svg\+xml)[;,])/i
 
-/** The URL if it is one the canvas will load (http, https, paper-asset or a data: image), otherwise null. */
+/**
+ * The URL if it is one the canvas will load (http, https, opendraw-asset or a data: image), otherwise
+ * null. Paper's paper-asset:// comes back as opendraw-asset://.
+ */
 export function safeImageSrc(src: string | undefined): string | null {
-  return src && IMAGE_SRC.test(src.trim()) ? src.trim() : null
+  return src && IMAGE_SRC.test(src.trim()) ? withAssetScheme(src.trim()) : null
 }
 
 const REMOVED_ELEMENTS = 'script, style, foreignObject, iframe, object, embed, audio, video, animate, set'

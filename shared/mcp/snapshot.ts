@@ -29,16 +29,18 @@ export interface Located {
   parent: DesignNode | null
   /** The top-level artboard that holds the node (the node itself for an artboard). */
   artboard: DesignNode
+  /** The node or one of the layers holding it is locked (S-22 Req 5). */
+  locked: boolean
 }
 
 export function locateNode(document: DesignDocument, id: string): Located | null {
   for (const page of document.pages) {
     for (const artboard of page.nodes) {
-      const stack: { node: DesignNode; parent: DesignNode | null }[] = [{ node: artboard, parent: null }]
+      const stack: { node: DesignNode; parent: DesignNode | null; locked: boolean }[] = [{ node: artboard, parent: null, locked: !!artboard.locked }]
       while (stack.length > 0) {
-        const { node, parent } = stack.pop()!
-        if (node.id === id) return { node, page, parent, artboard }
-        for (const child of node.children) stack.push({ node: child, parent: node })
+        const { node, parent, locked } = stack.pop()!
+        if (node.id === id) return { node, page, parent, artboard, locked }
+        for (const child of node.children) stack.push({ node: child, parent: node, locked: locked || !!child.locked })
       }
     }
   }

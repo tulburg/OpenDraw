@@ -5,7 +5,8 @@ import path from 'node:path'
 import { app } from 'electron'
 
 import type { DesignDocument, OpenedDocument, Viewport } from '../shared/document'
-import { createFirstDocument } from '../shared/document'
+import { createFirstDocument, migrateAssetUrls } from '../shared/document'
+import { registerAssets, withEmbeddedAssets } from './embedded'
 import { ResourceError, Workspace } from './resources'
 
 interface AppState {
@@ -61,7 +62,7 @@ export function flushState(): Promise<void> {
 
 async function writeDocument(file: string, document: DesignDocument): Promise<void> {
   const tmp = `${file}.tmp`
-  await writeFile(tmp, JSON.stringify(document, null, 2))
+  await writeFile(tmp, JSON.stringify(withEmbeddedAssets(document), null, 2))
   await rename(tmp, file)
 }
 
@@ -85,7 +86,7 @@ export function saveDocument(file: string, document: DesignDocument): Promise<vo
 export function saveDocumentSync(file: string, document: DesignDocument) {
   requireOpened(file)
   const tmp = `${file}.tmp`
-  writeFileSync(tmp, JSON.stringify(document, null, 2))
+  writeFileSync(tmp, JSON.stringify(withEmbeddedAssets(document), null, 2))
   renameSync(tmp, file)
 }
 
@@ -102,8 +103,14 @@ export const tabs = { ids: [] as string[], activeId: null as string | null }
 
 async function openDocument(file: string): Promise<OpenedDocument> {
   const state = await readState()
-  const document = JSON.parse(await readFile(file, 'utf8')) as DesignDocument
+  const stored = JSON.parse(await readFile(file, 'utf8')) as DesignDocument
+  // Files saved with paper-asset:// URLs (S-17) are rewritten to opendraw-asset:// (S-22 Req 2).
+  registerAssets(stored)
+  const migrated = migrateAssetUrls(stored)
   openedFiles.add(file)
+  if (migrated !== stored) await saveDocument(file, migrated)
+  // The editor works without the image data; saving puts it back (embedded.ts).
+  const { assets: _assets, ...document } = migrated
   const saved = state.viewports[file]
   const page = document.pages.find((p) => p.id === saved?.pageId) ?? document.pages[0]
   return { path: file, document, pageId: page.id, viewport: saved?.pageId === page.id ? saved.viewport : null }

@@ -101,7 +101,7 @@ export function getTreeSummary(snapshot: Snapshot, args: { fileId: string; nodeI
 
 export function getNodeInfo(snapshot: Snapshot, args: { fileId: string; nodeId: string }) {
   requireFile(snapshot, args.fileId)
-  const { node, parent, page, artboard } = requireNode(snapshot, args.nodeId)
+  const { node, parent, page, artboard, locked } = requireNode(snapshot, args.nodeId)
   return {
     id: node.id,
     name: node.name,
@@ -110,7 +110,7 @@ export function getNodeInfo(snapshot: Snapshot, args: { fileId: string; nodeId: 
     parentId: parent?.id ?? null,
     artboardId: artboard.id,
     visible: node.style.display !== 'none',
-    locked: false,
+    locked,
     childIds: node.children.map((child) => child.id),
     ...(node.type === 'text' ? { textContent: node.text ?? '' } : {}),
     ...layoutOf(snapshot, node.id)

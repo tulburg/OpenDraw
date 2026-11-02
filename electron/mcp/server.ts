@@ -26,6 +26,7 @@ import { withTokens as withFileTokens } from '../../shared/tokens'
 import { type ExportItem, runCombinedPDF, runExports } from '../export'
 import * as resources from '../resource-tools'
 import { fillImage } from './fill-image'
+import { AssetError, importAssets } from '../assets'
 import { requestRenderer } from '../rpc'
 import { computedStyles, type RenderTarget, screenshot } from './render'
 
@@ -210,7 +211,10 @@ function buildServer({ getWindow, renderTarget }: ServerDeps): McpServer {
       tool(async (args: unknown) => {
         const win = getWindow()
         if (!win) throw new ToolError('OpenDraw has no document window open. Ask the user to open a file.')
-        return text(await requestRenderer(win.webContents, 'mcp:write', { tool: name, args }))
+        const prepared = await importAssets(args).catch((err) => {
+          throw err instanceof AssetError ? new ToolError(err.message) : err
+        })
+        return text(await requestRenderer(win.webContents, 'mcp:write', { tool: name, args: prepared }))
       })
     )
   }

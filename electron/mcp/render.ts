@@ -13,7 +13,7 @@ let loading: Promise<BrowserWindow> | null = null
 /** Renders run one at a time; each one resizes and redraws the shared window. */
 let queue: Promise<unknown> = Promise.resolve()
 
-/** The render window's session; paper-asset URLs are served there too (S-17). */
+/** The render window's session; opendraw-asset URLs are served there too (S-17, S-22). */
 export const RENDER_PARTITION = 'opendraw-render'
 
 export interface RenderTarget {
