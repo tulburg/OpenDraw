@@ -1,8 +1,9 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import type { DesignNode } from '../../shared/document'
 import type { DocumentStore } from '../document/store'
 import { PagesList } from './PagesList'
+import { TokensPanel } from './TokensPanel'
 
 interface LayersPanelProps {
   nodes: DesignNode[]
@@ -54,6 +55,7 @@ function LayerRows({ nodes, depth, selection, onSelect }: LayersPanelProps & { d
 export function LayersPanel({ store, nodes, selection, onSelect }: LayersPanelProps & { store: DocumentStore }) {
   // Keep the first selected layer in view when the selection changes on the canvas (S-6 Req 7).
   const ref = useRef<HTMLElement>(null)
+  const [tab, setTab] = useState<'layers' | 'tokens'>('layers')
   useEffect(() => {
     if (!selection[0]) return
     ref.current?.querySelector(`[data-layer-id="${CSS.escape(selection[0])}"]`)?.scrollIntoView({ block: 'nearest' })
@@ -61,8 +63,17 @@ export function LayersPanel({ store, nodes, selection, onSelect }: LayersPanelPr
   return (
     <aside ref={ref} className="panel layers-panel" data-testid="layers-panel">
       <PagesList store={store} />
-      <div className="panel-title">Layers</div>
-      {nodes.length === 0 ? (
+      <div className="panel-tabs" role="tablist">
+        <button type="button" role="tab" aria-selected={tab === 'layers'} data-testid="tab-layers" onClick={() => setTab('layers')}>
+          Layers
+        </button>
+        <button type="button" role="tab" aria-selected={tab === 'tokens'} data-testid="tab-tokens" onClick={() => setTab('tokens')}>
+          Tokens
+        </button>
+      </div>
+      {tab === 'tokens' ? (
+        <TokensPanel store={store} />
+      ) : nodes.length === 0 ? (
         <div className="panel-empty">No layers on this page</div>
       ) : (
         <ul className="layer-list">

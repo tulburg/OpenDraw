@@ -1,16 +1,21 @@
-import { type CSSProperties, useContext, useMemo } from 'react'
+import { createContext, type CSSProperties, useContext, useMemo } from 'react'
 
-import type { DesignNode } from '../../shared/document'
+import type { CSSStyle, DesignNode } from '../../shared/document'
 import { safeImageSrc, sanitizeSvg } from '../document/media'
 import { PreviewContext } from './preview'
 import { EditingContext, TextEditor } from './TextEditor'
+
+/** The file's design tokens as custom properties, set on every artboard (S-14 Req 2). */
+export const TokensContext = createContext<CSSStyle>({})
 
 /** Renders a node as a real DOM element with its stored CSS. */
 export function NodeView({ node }: { node: DesignNode }) {
   const preview = useContext(PreviewContext)[node.id]
   const editing = useContext(EditingContext)
+  const tokens = useContext(TokensContext)
   const style: CSSProperties = { boxSizing: 'border-box', ...(node.style as CSSProperties), ...(preview as CSSProperties) }
   if (node.type === 'artboard') {
+    for (const [name, value] of Object.entries(tokens)) if (!(name in style)) (style as CSSStyle)[name] = value
     style.position = 'absolute'
     style.overflow ??= 'hidden'
   }

@@ -19,11 +19,18 @@ import { app, type BrowserWindow } from 'electron'
 import { readTools, resourceTools, SERVER_INSTRUCTIONS, writeTools } from '../../shared/mcp/definitions'
 import * as read from '../../shared/mcp/read-tools'
 import { requireFile, requireNode, type Snapshot, ToolError } from '../../shared/mcp/snapshot'
+import { tokenStyle } from '../../shared/tokens'
 import * as resources from '../resource-tools'
 import { requestRenderer } from '../rpc'
 import { computedStyles, type RenderTarget, screenshot } from './render'
 
 export const MCP_PATH = '/mcp'
+
+/** The artboard with the file's tokens set on it, as the canvas draws it (S-14). */
+const withTokens = (snap: Snapshot, artboard: Snapshot['document']['pages'][number]['nodes'][number]) => ({
+  ...artboard,
+  style: { ...tokenStyle(snap.document.tokens), ...artboard.style }
+})
 const VERSION = '0.1.0'
 
 export interface DiscoveryInfo {
@@ -75,7 +82,8 @@ function buildServer({ getWindow, renderTarget }: ServerDeps): McpServer {
     get_node_info: read.getNodeInfo,
     get_children: read.getChildren,
     find_nodes: read.findNodes,
-    get_jsx: read.getJSX
+    get_jsx: read.getJSX,
+    get_tokens: read.getTokens
   } as const
 
   for (const [name, run] of Object.entries(pure)) {
@@ -107,7 +115,7 @@ function buildServer({ getWindow, renderTarget }: ServerDeps): McpServer {
       }
       const result: Record<string, Record<string, string>> = {}
       for (const { artboard, ids } of byArtboard.values()) {
-        Object.assign(result, await computedStyles(renderTarget, artboard, ids))
+        Object.assign(result, await computedStyles(renderTarget, withTokens(snap, artboard), ids))
       }
       return text(result)
     })
@@ -124,7 +132,7 @@ function buildServer({ getWindow, renderTarget }: ServerDeps): McpServer {
       const snap = await snapshot(fileId)
       requireFile(snap, fileId)
       const { artboard } = requireNode(snap, nodeId)
-      const png = await screenshot(renderTarget, artboard, nodeId, scale ?? 1)
+      const png = await screenshot(renderTarget, withTokens(snap, artboard), nodeId, scale ?? 1)
       return { content: [{ type: 'image', data: png.toString('base64'), mimeType: 'image/png' }] }
     })
   )

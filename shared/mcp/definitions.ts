@@ -2,12 +2,17 @@
 // Descriptions are OpenDraw's own.
 import { z } from 'zod'
 
-import { PAGE_ICONS } from '../document'
+import { PAGE_ICONS, TOKEN_TYPES } from '../document'
 
 const fileId = z.string().describe('ID of the file to work on. Omit for the file open in OpenDraw.')
 const requiredFileId = z.string().describe('ID of the file to work on, from get_basic_info.')
 const pageId = z.string().describe('ID of the page to work on. Omit for the page the user is viewing.')
 const nodeId = z.string().describe('ID of the node.')
+const tokenType = z.enum(TOKEN_TYPES).describe('Token type.')
+const tokenName = z.string().describe('CSS custom property name, like --color-primary.')
+const tokenValue = z
+  .union([z.string(), z.number()])
+  .describe('Colors: a CSS color. spacing, radius, fontSize, container, breakpoint: a px string like "8px". fontWeight: a number. opacity: 0-1 or a percent. var(--other) aliases another token.')
 const pageIcon = z
   .enum(PAGE_ICONS)
   .describe('Icon shown in the page list in place of the default. arrow marks a key page; design is a pencil over a ruler; paper (crumpled) marks old drafts.')
@@ -65,6 +70,16 @@ export const readTools = {
         )
         .min(1)
         .optional()
+    })
+  },
+  get_tokens: {
+    description:
+      'Lists the file\'s design tokens: typed CSS custom properties that styles use with var(--name). format "json" (default) returns name, type, value and description; "css" a :root block; "tailwind" a Tailwind v4 @theme block. namePattern is a case-insensitive glob over the full name ("--color-*").',
+    inputSchema: z.object({
+      fileId: requiredFileId,
+      format: z.enum(['json', 'css', 'tailwind']).optional(),
+      namePattern: z.string().optional(),
+      types: z.array(tokenType).optional()
     })
   },
   get_jsx: {
@@ -231,6 +246,36 @@ Rules:
       fileId: requiredFileId,
       order: z.array(z.union([z.string(), z.object({ type: z.literal('divider') })])),
       removeDividerIds: z.array(z.string()).optional().describe('IDs of dividers to remove.')
+    }),
+    annotations: { readOnlyHint: false, destructiveHint: true }
+  },
+  create_tokens: {
+    description:
+      'Creates design tokens, in order. Use var(--other) as a value to alias another token. Returns {name, result: "created"} or {name, result: "error", message} per entry; a bad entry does not stop the rest. Define neutral colors first, then primary, secondary and accent; other types smallest first. Reuse tokens before making new ones.',
+    inputSchema: z.object({
+      fileId: requiredFileId,
+      tokens: z
+        .array(z.object({ type: tokenType, name: tokenName, value: tokenValue, description: z.string().optional().describe('What the token is for. Max 1024 characters.') }))
+        .min(1)
+    }),
+    annotations: { readOnlyHint: false, destructiveHint: false }
+  },
+  set_tokens: {
+    description:
+      'Renames (newName), updates (value, description) or deletes (delete: true) tokens by name, applied in order in one undo step. A rename rewrites var() references in styles and other tokens. Deleting a token that is still used is allowed; the result lists its users. Errors are per entry.',
+    inputSchema: z.object({
+      fileId: requiredFileId,
+      tokens: z
+        .array(
+          z.object({
+            name: tokenName,
+            newName: z.string().optional(),
+            value: tokenValue.optional(),
+            description: z.string().optional().describe('Pass "" to clear.'),
+            delete: z.boolean().optional()
+          })
+        )
+        .min(1)
     }),
     annotations: { readOnlyHint: false, destructiveHint: true }
   },

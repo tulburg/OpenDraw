@@ -61,6 +61,31 @@ export interface PageDivider {
   index: number
 }
 
+/** Paper's design token types (S-14). */
+export const TOKEN_TYPES = [
+  'breakpoint',
+  'color',
+  'container',
+  'fontFamily',
+  'fontSize',
+  'fontWeight',
+  'letterSpacing',
+  'lineHeight',
+  'opacity',
+  'radius',
+  'spacing'
+] as const
+
+export type TokenType = (typeof TOKEN_TYPES)[number]
+
+/** A design token: a typed CSS custom property that styles use with var(--name). */
+export interface Token {
+  name: string
+  type: TokenType
+  value: string
+  description?: string
+}
+
 export interface DesignDocument {
   format: 'opendraw'
   version: 1
@@ -69,6 +94,8 @@ export interface DesignDocument {
   pages: Page[]
   /** Dividers in the page list, in order. */
   dividers?: PageDivider[]
+  /** Design tokens, in the order they were defined. */
+  tokens?: Token[]
 }
 
 export interface Viewport {

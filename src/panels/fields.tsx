@@ -3,7 +3,8 @@
 // feedback while scrubbing or dragging a slider.
 import { useEffect, useId, useRef, useState } from 'react'
 
-import type { DesignNode } from '../../shared/document'
+import type { DesignNode, Token, TokenType } from '../../shared/document'
+import { tokenRef } from '../../shared/tokens'
 import type { StyleUpdate } from '../document/styles'
 import {
   type ColorFormat,
@@ -25,12 +26,104 @@ export interface StyleEditor {
   preview: (update: StyleUpdate | null) => void
   /** Colors used in the file, for swatches. */
   colors: string[]
+  /** The file's design tokens (S-14). */
+  tokens: Token[]
   /** Font families: the file's first, then installed ones. */
   fonts: string[]
   loadInstalledFonts: () => void
 }
 
 const shown = (value: Shared) => (value === MIXED ? '' : value)
+
+/** Which token types fit a property, for offering tokens in its field. */
+function tokenTypesFor(property: string): TokenType[] {
+  if (/color$/i.test(property)) return ['color']
+  if (/radius$/i.test(property)) return ['radius']
+  if (property === 'fontSize') return ['fontSize']
+  if (property === 'lineHeight') return ['lineHeight']
+  if (property === 'letterSpacing') return ['letterSpacing']
+  if (property === 'opacity') return ['opacity']
+  if (/^(min|max)?(width|height)$/i.test(property)) return ['spacing', 'container', 'breakpoint']
+  if (['gap', 'padding', 'borderWidth', 'left', 'top', 'right', 'bottom'].includes(property)) return ['spacing']
+  return []
+}
+
+/** A token's value with aliases followed, for swatches. */
+export function resolveToken(tokens: Token[], name: string): string | null {
+  const seen = new Set<string>()
+  for (let at: string | null = name; at && !seen.has(at); ) {
+    seen.add(at)
+    const token = tokens.find((t) => t.name === at)
+    if (!token) return null
+    const next = tokenRef(token.value)
+    if (!next) return token.value
+    at = next
+  }
+  return null
+}
+
+/**
+ * The token side of a field (S-14 Req 7): a chip with the token name when the value is var(--x),
+ * and a button listing the tokens that fit the property.
+ */
+function TokenControl({ editor, property, value }: { editor: StyleEditor; property: string; value: Shared }) {
+  const [open, setOpen] = useState(false)
+  const types = tokenTypesFor(property)
+  const options = editor.tokens.filter((t) => types.includes(t.type))
+  const ref = value === MIXED ? null : tokenRef(value)
+  useEffect(() => {
+    if (!open) return
+    const close = (event: MouseEvent) => !(event.target as Element).closest('.token-menu, .token-button') && setOpen(false)
+    window.addEventListener('mousedown', close)
+    return () => window.removeEventListener('mousedown', close)
+  }, [open])
+  return (
+    <>
+      {ref && (
+        <span className="token-chip" data-testid="token-chip" title={`${ref}: ${resolveToken(editor.tokens, ref) ?? 'missing token'}`}>
+          <span className="token-chip-name">{ref.slice(2)}</span>
+          <button
+            type="button"
+            aria-label="Detach token"
+            title="Use the value instead of the token"
+            onClick={() => editor.commit({ [property]: resolveToken(editor.tokens, ref) })}
+          >
+            ×
+          </button>
+        </span>
+      )}
+      {options.length > 0 && (
+        <button type="button" className="token-button" data-testid="token-button" aria-label="Use a token" title="Use a token" onClick={() => setOpen(!open)}>
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M8 2l6 6-6 6-6-6z" />
+          </svg>
+        </button>
+      )}
+      {open && (
+        <div className="token-menu" data-testid="token-menu">
+          {options.map((token) => {
+            const resolved = resolveToken(editor.tokens, token.name)
+            return (
+              <button
+                key={token.name}
+                type="button"
+                data-token={token.name}
+                onClick={() => {
+                  setOpen(false)
+                  editor.commit({ [property]: `var(${token.name})` })
+                }}
+              >
+                {token.type === 'color' && <span className="color-swatch small" style={{ background: resolved ?? 'transparent' }} />}
+                <span className="token-menu-name">{token.name}</span>
+                <span className="token-menu-value">{resolved}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </>
+  )
+}
 
 /** A text input that edits a draft and commits on Enter or blur, resetting when the value changes. */
 function useDraft(value: Shared) {
@@ -115,15 +208,18 @@ export function NumberField({ editor, property, label, placeholder }: { editor: 
         </label>
       }
     >
-      <input
-        ref={input}
-        value={draft}
-        placeholder={value === MIXED ? 'Mixed' : placeholder}
-        spellCheck={false}
-        onChange={(event) => setDraft(event.target.value)}
-        onKeyDown={onKeyDown}
-        onBlur={() => commitText(draft)}
-      />
+      {!(value !== MIXED && tokenRef(value)) && (
+        <input
+          ref={input}
+          value={draft}
+          placeholder={value === MIXED ? 'Mixed' : placeholder}
+          spellCheck={false}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={onKeyDown}
+          onBlur={() => commitText(draft)}
+        />
+      )}
+      <TokenControl editor={editor} property={property} value={value} />
     </Row>
   )
 }
@@ -242,7 +338,9 @@ export function ColorField({ editor, property, label }: { editor: StyleEditor; p
   const [draft, setDraft] = useDraft(value)
   const [open, setOpen] = useState(false)
   const [format, setFormat] = useState<ColorFormat>('hex')
-  const rgba = value === MIXED ? null : parseColor(value)
+  const ref = value === MIXED ? null : tokenRef(value)
+  const resolved = value === MIXED ? null : ref ? resolveToken(editor.tokens, ref) : value
+  const rgba = resolved ? parseColor(resolved) : null
 
   const commitColor = (css: string | null) => {
     editor.preview(null)
@@ -261,17 +359,20 @@ export function ColorField({ editor, property, label }: { editor: StyleEditor; p
         type="button"
         className="color-swatch"
         aria-label={`Pick ${label.toLowerCase()}`}
-        style={{ background: value === MIXED ? 'repeating-linear-gradient(45deg, #ccc 0 4px, #fff 4px 8px)' : value || 'transparent' }}
+        style={{ background: value === MIXED ? 'repeating-linear-gradient(45deg, #ccc 0 4px, #fff 4px 8px)' : resolved || 'transparent' }}
         onClick={() => setOpen(!open)}
       />
-      <input
-        value={draft}
-        placeholder={value === MIXED ? 'Mixed' : 'None'}
-        spellCheck={false}
-        onChange={(event) => setDraft(event.target.value)}
-        onKeyDown={(event) => event.key === 'Enter' && (event.target as HTMLInputElement).blur()}
-        onBlur={commitText}
-      />
+      {!ref && (
+        <input
+          value={draft}
+          placeholder={value === MIXED ? 'Mixed' : 'None'}
+          spellCheck={false}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => event.key === 'Enter' && (event.target as HTMLInputElement).blur()}
+          onBlur={commitText}
+        />
+      )}
+      <TokenControl editor={editor} property={property} value={value} />
       {open && (
         <div className="color-popover" data-color-popover={property}>
           <div className="color-popover-row">

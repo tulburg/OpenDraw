@@ -528,5 +528,56 @@
         "detail": "A file needs at least one page"
       }
     ]
+  },
+  "S-14": {
+    "at": "2026-11-02T03:44:19.397Z",
+    "running": false,
+    "results": [
+      {
+        "name": "create_tokens makes a color and an alias; a frame styled var(--color-primary) renders the token color",
+        "pass": true,
+        "detail": "A rgb(255, 0, 0); alias B rgb(255, 0, 0)"
+      },
+      {
+        "name": "set_tokens changing the color re-renders every layer using it, in one undo step",
+        "pass": true,
+        "detail": "blue on both, one undo back to red"
+      },
+      {
+        "name": "Renaming --color-primary to --color-brand rewrites references in styles and aliases",
+        "pass": true,
+        "detail": "alias -> var(--color-brand); A uses var(--color-brand)"
+      },
+      {
+        "name": "get_tokens returns JSON, a :root block and a Tailwind @theme block; namePattern filters",
+        "pass": true,
+        "detail": "5 css lines; tailwind @theme {   --color-brand: #0000ff;   --color-accent: var(--color-brand);   --spacing-space-4: 16px; }"
+      },
+      {
+        "name": "get_jsx shows var(--color-brand); get_computed_styles shows the resolved color",
+        "pass": true,
+        "detail": "jsx keeps var(); computed rgb(0, 0, 255), padding 16px"
+      },
+      {
+        "name": "Invalid entries are rejected in-band while the others are created",
+        "pass": true,
+        "detail": "not-a-color is not a CSS color | 4 is not a px size like 8px | 1.5 is not an opacity (0-1 or a percent) | no-dashes is not a CSS custom property name like --color-primary"
+      },
+      {
+        "name": "Deleting a token still in use is allowed and lists its users",
+        "pass": true,
+        "detail": "{\"nodes\":[\"4793f17a-d63a-4961-ba56-0b2212a648dd\"],\"tokens\":[]}"
+      },
+      {
+        "name": "Tokens panel: editing a value updates the canvas; picking a token in a color field writes var(--name)",
+        "pass": true,
+        "detail": "edited to #00ff00 on canvas; artboard backgroundColor var(--color-accent), field shows color-accent"
+      },
+      {
+        "name": "Tokens are saved with the file",
+        "pass": true,
+        "detail": "saved --color-brand, --color-accent, --space-4, --weight-bold, --radius-1"
+      }
+    ]
   }
 }

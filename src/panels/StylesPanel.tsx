@@ -2,8 +2,8 @@
 // raw CSS view for everything else. Every change goes through the document engine as one undo step.
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
-import type { CSSStyle, DesignNode } from '../../shared/document'
-import type { DocumentStore } from '../document/store'
+import type { CSSStyle, DesignNode, Token } from '../../shared/document'
+import { type DocumentStore, useStore } from '../document/store'
 import type { StyleUpdate } from '../document/styles'
 import { findNode } from '../document/tree'
 import { documentColors, documentFonts, kebab, MIXED, parseRawCSS, rawCSS, sharedValue } from './css-values'
@@ -149,6 +149,8 @@ function RawCSS({ editor }: { editor: StyleEditor }) {
   )
 }
 
+const NO_TOKENS: Token[] = []
+
 export function StylesPanel({ store, nodes, selection, measure, onPreview }: StylesPanelProps) {
   const selected = useMemo(
     () => selection.map((id) => findNode(nodes, id)).filter((node): node is DesignNode => node !== null),
@@ -157,6 +159,7 @@ export function StylesPanel({ store, nodes, selection, measure, onPreview }: Sty
   const [notes, setNotes] = useState<string[]>([])
   useEffect(() => setNotes([]), [selection])
   const [installedFonts, setInstalledFonts] = useState<string[]>([])
+  const tokens = useStore(store, (s) => s.document.tokens) ?? NO_TOKENS
 
   const report = useCallback((ignored: Record<string, Record<string, string>>) => {
     const lines = new Set<string>()
@@ -181,6 +184,7 @@ export function StylesPanel({ store, nodes, selection, measure, onPreview }: Sty
         ),
       preview: (update) => onPreview(update ? Object.fromEntries(ids.map((id) => [id, update as CSSStyle])) : null),
       colors: documentColors(nodes),
+      tokens,
       fonts: [...new Set([...documentFonts(nodes), ...installedFonts, ...FALLBACK_FONTS])],
       loadInstalledFonts: () => {
         if (installedFonts.length > 0 || !window.queryLocalFonts) return
@@ -191,7 +195,7 @@ export function StylesPanel({ store, nodes, selection, measure, onPreview }: Sty
       }
     }
     return value
-  }, [selected, store, nodes, installedFonts, onPreview, report])
+  }, [selected, store, nodes, installedFonts, onPreview, report, tokens])
 
   if (selected.length === 0) {
     return (

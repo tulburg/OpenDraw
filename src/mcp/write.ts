@@ -248,6 +248,15 @@ export function runWriteTool(ctx: WriteContext, tool: WriteToolName, args: any):
       return { released }
     }
 
+    // Token tools (S-14): one undo step per call; entries fail on their own.
+    case 'create_tokens': {
+      return store.transact('Agent: create tokens', (tx) => tx.createTokens(args.tokens))
+    }
+
+    case 'set_tokens': {
+      return store.transact('Agent: set tokens', (tx) => tx.setTokens(args.tokens))
+    }
+
     // Page tools (S-12) never switch the page the user is viewing.
     case 'create_page': {
       const pageId = store.transact('Agent: create page', (tx) => tx.addPage({ name: args.name, icon: args.icon, afterId: state.pageId }))

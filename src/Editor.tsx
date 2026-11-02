@@ -1,7 +1,9 @@
-import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import type { CSSStyle, OpenedDocument, Viewport } from '../shared/document'
 import { Canvas } from './canvas/Canvas'
+import { TokensContext } from './canvas/NodeView'
+import { tokenStyle } from '../shared/tokens'
 import { fitViewport, nextZoomStep, zoomAt } from './canvas/viewport'
 import { type DocumentStore, useStore } from './document/store'
 import { useWorking, type WorkingIndicators } from './mcp/working'
@@ -52,6 +54,7 @@ export function Editor({ opened, store, working, topBar, onViewState }: EditorPr
   const workingIds = useWorking(working)
 
   const nodes = doc.pages.find((p) => p.id === pageId)?.nodes ?? []
+  const tokens = useMemo(() => tokenStyle(doc.tokens), [doc.tokens])
 
   const fit = useCallback(() => {
     if (canvasSize.current) setViewport(fitViewport(nodes, canvasSize.current))
@@ -136,6 +139,7 @@ export function Editor({ opened, store, working, topBar, onViewState }: EditorPr
       {topBar(viewport?.zoom ?? null)}
       <LayersPanel store={store} nodes={nodes} selection={selection} onSelect={selectLayer} />
       {/* Nodes stay hidden until the viewport is known, so a new file never flashes unfitted. */}
+      <TokensContext.Provider value={tokens}>
       <Canvas
         store={store}
         nodes={viewport ? nodes : []}
@@ -146,6 +150,7 @@ export function Editor({ opened, store, working, topBar, onViewState }: EditorPr
         onViewportChange={setViewport}
         onResize={onResize}
       />
+      </TokensContext.Provider>
       <StylesPanel store={store} nodes={nodes} selection={selection} measure={measureNode} onPreview={onPanelPreview} />
     </div>
   )

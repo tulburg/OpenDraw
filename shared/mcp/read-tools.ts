@@ -2,6 +2,7 @@
 // a renderer and live in the main process.
 import type { DesignNode } from '../document'
 import { pageList } from '../pages'
+import { matchesPattern, tokensAsCss, tokensAsTailwind } from '../tokens'
 import { type JSXOptions, toJSX } from './jsx'
 import {
   layoutOf,
@@ -46,7 +47,7 @@ export function getBasicInfo(snapshot: Snapshot, args: { fileId?: string; pageId
       return { id: node.id, name: node.name, worldX, worldY, width, height }
     }),
     fontFamilies: fontFamilies(snapshot.document.pages.flatMap((p) => p.nodes)),
-    tokens: []
+    tokens: (snapshot.document.tokens ?? []).map((t) => ({ name: t.name, type: t.type, value: t.value }))
   }
 }
 
@@ -125,6 +126,16 @@ export function getChildren(snapshot: Snapshot, args: { fileId: string; nodeId: 
     childCount: child.children.length,
     ...layoutOf(snapshot, child.id)
   }))
+}
+
+export function getTokens(snapshot: Snapshot, args: { fileId?: string; format?: 'json' | 'css' | 'tailwind'; namePattern?: string; types?: string[] }) {
+  requireFile(snapshot, args.fileId)
+  const tokens = (snapshot.document.tokens ?? []).filter(
+    (t) => (!args.namePattern || matchesPattern(t.name, args.namePattern)) && (!args.types || args.types.includes(t.type))
+  )
+  if (args.format === 'css') return tokensAsCss(tokens)
+  if (args.format === 'tailwind') return tokensAsTailwind(tokens)
+  return { tokens }
 }
 
 export function getJSX(

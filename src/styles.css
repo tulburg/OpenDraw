@@ -1182,3 +1182,229 @@ body {
   background: var(--panel);
   color: var(--text);
 }
+
+/* Layers and Tokens tabs, the Tokens panel and token fields (S-14). */
+.panel-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 10px 8px 6px;
+}
+
+.panel-tabs button {
+  padding: 3px 8px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.panel-tabs button[aria-selected='true'] {
+  background: var(--row-hover);
+  color: var(--text);
+}
+
+.tokens-actions {
+  padding: 0 8px 8px;
+}
+
+.tokens-actions select {
+  width: 100%;
+}
+
+.token-group {
+  padding: 0 4px 8px;
+}
+
+.token-group-title {
+  padding: 6px 8px 4px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.token-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 28px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+}
+
+.token-row:hover {
+  background: var(--row-hover);
+}
+
+.token-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.token-value,
+.token-menu-value {
+  overflow: hidden;
+  max-width: 45%;
+  color: var(--text-muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+
+.token-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 2px 4px 8px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.token-form input {
+  width: 100%;
+  min-width: 0;
+  font: inherit;
+}
+
+.token-form-value {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.token-error {
+  color: #e5484d;
+}
+
+.token-form-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.token-form-actions .spacer {
+  flex: 1;
+}
+
+.token-form-actions button {
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--panel);
+  color: var(--text);
+}
+
+.token-form-actions .primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.token-form-actions .danger {
+  color: #e5484d;
+}
+
+.field-control {
+  position: relative;
+}
+
+.token-chip {
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  min-width: 0;
+  height: 22px;
+  padding: 0 4px 0 6px;
+  border-radius: 4px;
+  background: var(--accent-soft);
+}
+
+.token-chip-name {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.token-chip button {
+  flex-shrink: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.token-button {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.token-button:hover {
+  background: var(--row-hover);
+  color: var(--text);
+}
+
+.token-button svg {
+  width: 10px;
+  height: 10px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+}
+
+.token-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  width: 220px;
+  max-height: 240px;
+  overflow: auto;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 6px 24px rgb(0 0 0 / 0.15);
+}
+
+.token-menu button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 6px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+}
+
+.token-menu button:hover {
+  background: var(--row-hover);
+}
+
+.token-menu-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}

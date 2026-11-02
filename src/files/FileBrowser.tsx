@@ -5,7 +5,8 @@ import { type CSSProperties, useCallback, useEffect, useState } from 'react'
 
 import type { DesignDocument, DesignNode } from '../../shared/document'
 import type { ListedResource } from '../../electron/resource-tools'
-import { NodeView } from '../canvas/NodeView'
+import { tokenStyle } from '../../shared/tokens'
+import { NodeView, TokensContext } from '../canvas/NodeView'
 
 const THUMB = { width: 220, height: 140 }
 const LIST_LIMIT = 200
@@ -32,12 +33,15 @@ function timeAgo(iso: string): string {
 /** A scaled-down render of a file's first artboard. */
 function Thumbnail({ id, updatedAt }: { id: string; updatedAt: string }) {
   const [artboard, setArtboard] = useState<DesignNode | null>(null)
+  const [tokens, setTokens] = useState<DesignDocument['tokens']>()
   useEffect(() => {
     let cancelled = false
     window.opendraw
       .readFile(id)
       .then((doc: DesignDocument) => {
-        if (!cancelled) setArtboard(doc.pages[0]?.nodes.find((n) => n.type === 'artboard') ?? null)
+        if (cancelled) return
+        setArtboard(doc.pages[0]?.nodes.find((n) => n.type === 'artboard') ?? null)
+        setTokens(doc.tokens)
       })
       .catch(() => undefined)
     return () => {
@@ -62,7 +66,9 @@ function Thumbnail({ id, updatedAt }: { id: string; updatedAt: string }) {
   return (
     <div className="thumb">
       <div style={inner}>
-        <NodeView node={node} />
+        <TokensContext.Provider value={tokenStyle(tokens)}>
+          <NodeView node={node} />
+        </TokensContext.Provider>
       </div>
     </div>
   )

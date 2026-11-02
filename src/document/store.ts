@@ -2,8 +2,9 @@
 // undo step, and listeners re-render and autosave from the committed state.
 import { useSyncExternalStore } from 'react'
 
-import { type DesignDocument, type DesignNode, newId, type Page, type PageIcon, type TextSpan } from '../../shared/document'
+import { type DesignDocument, type DesignNode, newId, type Page, type PageIcon, type TextSpan, TOKEN_TYPES } from '../../shared/document'
 import { arrangePages, nextPageName, PageError } from '../../shared/pages'
+import { type CreateEntry, createTokens, type SetEntry, setTokens, type TokenResult } from '../../shared/tokens'
 import { clearFromSpans } from './richtext'
 import { applyStyleUpdate, type StyleUpdate } from './styles'
 import * as tree from './tree'
@@ -257,6 +258,20 @@ export class Transaction {
       if (err instanceof PageError) throw new EditError(err.message)
       throw err
     }
+  }
+
+  /** Adds design tokens (S-14); each entry succeeds or fails on its own. */
+  createTokens(entries: CreateEntry[]): TokenResult[] {
+    const { tokens, results } = createTokens(this.document.tokens ?? [], entries, TOKEN_TYPES)
+    if (results.some((r) => r.result !== 'error')) this.document = { ...this.document, tokens }
+    return results
+  }
+
+  /** Renames, updates or deletes tokens in order. */
+  setTokens(entries: SetEntry[]): TokenResult[] {
+    const { document, results } = setTokens(this.document, entries)
+    if (results.some((r) => r.result !== 'error')) this.document = document
+    return results
   }
 
   /** Sets the selection that this step leaves behind (and that redo restores). */
