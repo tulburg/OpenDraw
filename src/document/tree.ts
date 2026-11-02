@@ -58,7 +58,7 @@ function withChildren(page: Page, parentId: string, change: (children: DesignNod
   return { ...page, nodes }
 }
 
-function withNode(page: Page, id: string, change: (node: DesignNode) => DesignNode): Page {
+export function withNode(page: Page, id: string, change: (node: DesignNode) => DesignNode): Page {
   const location = locate(page, id)
   if (!location) throw new EditError(`No node ${id}`)
   return withChildren(page, location.parentId, (children) =>

@@ -113,6 +113,37 @@ export class Transaction {
     this.update(id, (page) => tree.rename(page, id, name))
   }
 
+  /** Hides with `display: none`, keeping the old display so showing restores it (S-18 Req 3). */
+  setHidden(ids: string[], hidden: boolean) {
+    for (const id of ids) {
+      this.update(id, (page) =>
+        tree.withNode(page, id, (node) => {
+          const isHidden = node.style.display === 'none'
+          if (hidden === isHidden) return node
+          if (hidden) return { ...node, hiddenDisplay: String(node.style.display ?? ''), style: { ...node.style, display: 'none' } }
+          // Restored in place, so the style reads exactly as it did before hiding.
+          const { hiddenDisplay, ...rest } = node
+          if (hiddenDisplay) return { ...rest, style: { ...node.style, display: hiddenDisplay } }
+          const { display: _, ...style } = node.style
+          return { ...rest, style }
+        })
+      )
+    }
+  }
+
+  setLocked(ids: string[], locked: boolean) {
+    for (const id of ids) {
+      this.update(id, (page) =>
+        tree.withNode(page, id, (node) => {
+          if (!!node.locked === locked) return node
+          if (locked) return { ...node, locked: true }
+          const { locked: _, ...rest } = node
+          return rest
+        })
+      )
+    }
+  }
+
   setExports(id: string, exports: ExportSetting[]) {
     this.update(id, (page) => tree.setExports(page, id, exports))
   }

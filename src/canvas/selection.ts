@@ -10,15 +10,19 @@ export function parentIdOf(root: ParentNode, id: string): string | null {
   return nodeElement(root, id)?.parentElement?.closest<HTMLElement>('[data-node-id]')?.dataset.nodeId ?? null
 }
 
-/** The layers under an event target, from its artboard down to the deepest one. */
+/**
+ * The layers under an event target, from its artboard down to the deepest one. A locked layer and
+ * everything inside it are passed through (S-18 Req 4): the path stops above it.
+ */
 export function pathAt(target: EventTarget | null): string[] {
-  const path: string[] = []
+  const path: HTMLElement[] = []
   let el = target instanceof Element ? target.closest<HTMLElement>('[data-node-id]') : null
   while (el) {
-    path.unshift(el.dataset.nodeId!)
+    path.unshift(el)
     el = el.parentElement?.closest<HTMLElement>('[data-node-id]') ?? null
   }
-  return path
+  const locked = path.findIndex((e) => e.hasAttribute('data-locked'))
+  return (locked === -1 ? path : path.slice(0, locked)).map((e) => e.dataset.nodeId!)
 }
 
 /**

@@ -777,6 +777,7 @@ export function Canvas({
         const bounds = ref.current!.getBoundingClientRect()
         const touched = nodes
           .filter((node) => {
+            if (node.locked) return false
             const r = nodeElement(ref.current!, node.id)?.getBoundingClientRect()
             if (!r) return false
             const left = r.left - bounds.left

@@ -1,10 +1,12 @@
 {
   "discussing": [
-    "S-15",
-    "S-16",
-    "S-17"
+    "S-18",
+    "S-19",
+    "S-20",
+    "S-21",
+    "Q-7"
   ],
   "next": [],
-  "note": "Next specs drafted: export, comments, agent helpers",
-  "at": "2026-11-02T03:51:44.418Z"
+  "note": "Next specs drafted: layers panel, arrange commands, packaging, performance",
+  "at": "2026-11-02T04:27:28.081Z"
 }

@@ -25,6 +25,10 @@ export interface DesignNode {
   svg?: string
   /** Export settings (S-15): one file per entry when the layer is exported. */
   exports?: ExportSetting[]
+  /** Locked layers (S-18) cannot be selected or moved on the canvas. Not CSS. */
+  locked?: boolean
+  /** A hidden layer's `display` before it was hidden ('' when it had none), restored on show. */
+  hiddenDisplay?: string
 }
 
 export const EXPORT_FORMATS = ['png', 'jpg', 'webp', 'svg', 'pdf'] as const

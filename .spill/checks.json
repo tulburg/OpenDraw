@@ -692,5 +692,41 @@
         "detail": "logo 8px wide, screenshot 255,0,0; secret refused (403)"
       }
     ]
+  },
+  "S-18": {
+    "at": "2026-11-02T04:37:28.139Z",
+    "running": false,
+    "results": [
+      {
+        "name": "Double-click renames a layer; Escape leaves it unchanged; undo restores it",
+        "pass": true,
+        "detail": "Box -> Gallery -> Box"
+      },
+      {
+        "name": "Dragging a layer into another frame changes its parent; dragging a frame into its own child does nothing",
+        "pass": true,
+        "detail": "card holds inner,box; footer moved first; undo restored header,box,card,footer"
+      },
+      {
+        "name": "Hiding a display:flex frame and showing it leaves its style as before; hidden it is not drawn and not visible",
+        "pass": true,
+        "detail": "display flex restored"
+      },
+      {
+        "name": "A locked layer cannot be selected on the canvas but can be in the panel; the lock survives a restart",
+        "pass": true,
+        "detail": "canvas clicks picked desktop; panel picked card"
+      },
+      {
+        "name": "Shift+click selects a range; Cmd+click toggles one; collapse hides children and canvas selection expands them",
+        "pass": true,
+        "detail": "range 4, toggle left 3"
+      },
+      {
+        "name": "The context menu duplicates, wraps in a frame, copies as HTML and deletes",
+        "pass": true,
+        "detail": "duplicate 61441082, wrapped into 2, HTML 210 chars, deleted footer"
+      }
+    ]
   }
 }

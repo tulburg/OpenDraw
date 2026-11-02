@@ -23,7 +23,7 @@ export function NodeView({ node }: { node: DesignNode }) {
   if (node.type === 'svg') return <SvgNode node={node} style={style} />
   if (node.type === 'text' && editing.id === node.id) return <TextEditor node={node} style={style} editing={editing} />
   return (
-    <div data-node-id={node.id} data-node-type={node.type} style={style}>
+    <div data-node-id={node.id} data-node-type={node.type} data-locked={node.locked || undefined} style={style}>
       {node.spans ? <Spans node={node} /> : node.text}
       {node.children.map((child) => (
         <NodeView key={child.id} node={child} />
@@ -51,14 +51,14 @@ export function Spans({ node }: { node: DesignNode }) {
 
 function ImageNode({ node, style }: { node: DesignNode; style: CSSProperties }) {
   const src = safeImageSrc(node.src)
-  if (!src) return <div data-node-id={node.id} data-node-type="image" style={style} />
-  return <img data-node-id={node.id} data-node-type="image" src={src} alt="" draggable={false} style={style} />
+  if (!src) return <div data-node-id={node.id} data-node-type="image" data-locked={node.locked || undefined} style={style} />
+  return <img data-node-id={node.id} data-node-type="image" data-locked={node.locked || undefined} src={src} alt="" draggable={false} style={style} />
 }
 
 // Files on disk can be edited by hand, so the markup is sanitized again before it is drawn.
 function SvgNode({ node, style }: { node: DesignNode; style: CSSProperties }) {
   const markup = useMemo(() => (node.svg ? sanitizeSvg(node.svg) : ''), [node.svg])
   return (
-    <div data-node-id={node.id} data-node-type="svg" style={style} dangerouslySetInnerHTML={{ __html: markup }} />
+    <div data-node-id={node.id} data-node-type="svg" data-locked={node.locked || undefined} style={style} dangerouslySetInnerHTML={{ __html: markup }} />
   )
 }

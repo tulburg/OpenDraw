@@ -94,5 +94,5 @@ export function selectAll(store: DocumentStore, parentOf: (id: string) => string
   const nodes = pageNodes(store)
   const parentId = selection[0] ? parentOf(selection[0]) : null
   const parent = parentId ? findNode(nodes, parentId) : null
-  store.select((parent ? parent.children : nodes).map((n) => n.id))
+  store.select((parent ? parent.children : nodes).filter((n) => !n.locked).map((n) => n.id))
 }

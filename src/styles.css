@@ -1777,3 +1777,80 @@ body {
 .comment-message:hover .comment-reaction[aria-label='Add reaction'] {
   visibility: visible;
 }
+
+/* Layers panel editing (S-18) */
+.layer-row {
+  gap: 4px;
+  cursor: default;
+  user-select: none;
+}
+.layer-row .layer-name {
+  flex: 1;
+  min-width: 0;
+}
+.layer-row[data-hidden] .layer-name,
+.layer-row[data-hidden] .layer-icon {
+  opacity: 0.45;
+}
+.layer-chevron,
+.layer-toggle {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+}
+.layer-chevron svg,
+.layer-toggle svg {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.layer-toggles {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+}
+.layer-toggle {
+  visibility: hidden;
+}
+.layer-row:hover .layer-toggle,
+.layer-toggle[data-on] {
+  visibility: visible;
+}
+.layer-toggle:hover {
+  color: var(--text);
+}
+.layer-name-input {
+  flex: 1;
+  min-width: 0;
+  height: 20px;
+  padding: 0 4px;
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+.layer-row[data-drop='before'] {
+  box-shadow: inset 0 2px 0 var(--accent);
+}
+.layer-row[data-drop='after'] {
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+.layer-row[data-drop='inside'] {
+  outline: 1.5px solid var(--accent);
+  outline-offset: -1.5px;
+}
+.page-menu > button:disabled {
+  color: var(--text-muted);
+  background: transparent;
+}
