@@ -75,13 +75,16 @@ try {
     await enter('[data-field="padding"] input', '24')
     const after = (await style('Left')).padding
     expect(after === '24px', `padding ${after}`)
+    // Gap shows on flex containers only (S-35).
+    await select('Row')
     await enter('[data-field="gap"] input', '4 * 3')
-    const gap = (await style('Left')).gap
+    const gap = (await style('Row')).gap
     expect(gap === '12px', `math gave gap ${gap}`)
     await undo()
     await undo()
     const restored = await style('Left')
-    expect(restored.padding === undefined && restored.gap === undefined, `after two undos: ${JSON.stringify(restored)}`)
+    const row = await style('Row')
+    expect(restored.padding === undefined && row.gap === '10px', `after two undos: Left ${JSON.stringify(restored)}, Row gap ${row.gap}`)
     return `padding 24px, gap "4 * 3" = ${gap}; two undos restore both`
   })
 

@@ -2,7 +2,7 @@
 // contributors. Licensed under the GNU Affero General Public License v3.0; see LICENSE-AGPL.
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
-import type { CSSStyle, DesignNode, Viewport } from '../../shared/document'
+import { type CSSStyle, type DesignNode, holdsLayers, type Viewport } from '../../shared/document'
 import { type DocumentStore, setNodeLocator } from '../document/store'
 import { findNode } from '../document/tree'
 import { CLIPBOARD_TYPE, copySelection, deleteSelection, duplicateSelection, paste, selectAll } from './commands'
@@ -480,7 +480,7 @@ export function Canvas({
     const center = { x: bounds.width / 2, y: bounds.height / 2 }
     const selected = store.getState().selection[0]
     const node = selected ? findNode(nodesRef.current, selected) : null
-    let parentId = node && (node.type === 'frame' || node.type === 'artboard') ? node.id : selected ? parentIdOf(ref.current!, selected) : null
+    let parentId = holdsLayers(node) ? node!.id : selected ? parentIdOf(ref.current!, selected) : null
     parentId ??= containerOn(pathAt(document.elementFromPoint(bounds.left + center.x, bounds.top + center.y)), nodesRef.current)
     let point = center
     const el = parentId ? nodeElement(ref.current!, parentId) : null
@@ -823,7 +823,7 @@ export function Canvas({
             if (id === draggedId) return false
             const n = findNode(nodes, id)
             const el = nodeElement(ref.current!, id)
-            return (n?.type === 'frame' || n?.type === 'artboard') && !!el && getComputedStyle(el).display.includes('flex')
+            return holdsLayers(n) && !!el && getComputedStyle(el).display.includes('flex')
           }) ?? next.parentId
         if (target !== next.target) {
           const style = getComputedStyle(nodeElement(ref.current!, target)!)
@@ -984,7 +984,7 @@ export function Canvas({
     setHandleInfo(singleEl && singleNode ? handleInfoOf(singleEl, singleNode) : null)
     // A selected frame outlines its children, so it is clear they move with it.
     setChildFrames(
-      singleNode?.type === 'frame'
+      singleNode?.type === 'frame' && holdsLayers(singleNode)
         ? singleNode.children.flatMap((child) => {
             const el = nodeElement(canvas, child.id)
             return el ? [{ id: child.id, frame: frameOf(el, outer, zoom) }] : []

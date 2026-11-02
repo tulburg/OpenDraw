@@ -1,6 +1,6 @@
 import { memo, type RefObject, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
-import type { DesignNode } from '../../shared/document'
+import { type DesignNode, holdsLayers } from '../../shared/document'
 import { type DocumentStore, type Transaction, useStore } from '../document/store'
 import { CommentsPanel } from './CommentsPanel'
 import { LayerMenu } from './LayerMenu'
@@ -54,7 +54,7 @@ function flatten(nodes: DesignNode[], parentId: string, collapsed: Set<string>, 
   return out
 }
 
-const isContainer = (node: DesignNode) => node.type === 'frame' || node.type === 'artboard'
+const isContainer = (node: DesignNode) => holdsLayers(node)
 
 function ancestorsOf(nodes: DesignNode[], id: string, path: string[] = []): string[] | null {
   for (const node of nodes) {

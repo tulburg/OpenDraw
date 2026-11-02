@@ -196,6 +196,27 @@ try {
     return `dragged over the top layer: selection moved to ${moved.left}, ${moved.top}, top layer stayed; a click selected the top layer`
   })
 
+  await check('A rectangle drawn starting on another rectangle goes beside it, not inside it; paste with a shape selected lands in its parent (D-14)', async () => {
+    await pressKey('r')
+    await drag(await screenAt('Free', 400, 20), await screenAt('Free', 560, 140))
+    const base = (await selected())[0]
+    await pressKey('r')
+    await drag(await screenAt('Free', 450, 60), await screenAt('Free', 520, 100))
+    const drawn = (await selected())[0]
+    const free = await node('Free')
+    const holder = (id: string) => free.children.some((c: any) => c.id === id)
+    expect((await node(base)).shape === 'rectangle', `marker ${(await node(base)).shape}`)
+    expect(holder(base) && holder(drawn) && (await node(base)).children.length === 0, `parents: base in Free ${holder(base)}, drawn in Free ${holder(drawn)}`)
+    await app.eval(`window.opendrawStore.select(['${base}']), true`)
+    await app.command('copy', 'c')
+    await app.command('paste', 'v')
+    await Bun.sleep(150)
+    const pasted = (await selected())[0]
+    const after = await node('Free')
+    expect(pasted !== base && after.children.some((c: any) => c.id === pasted) && (await node(base)).children.length === 0, `pasted ${pasted} into ${after.children.some((c: any) => c.id === pasted) ? 'Free' : 'the shape'}`)
+    return `both rectangles are children of Free; the pasted copy too`
+  })
+
   await check('A rectangle drawn on empty canvas is an artboard of its own', async () => {
     const before = (await pageNodes()).length
     await pressKey('r')

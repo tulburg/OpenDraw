@@ -1,7 +1,7 @@
 // Parts copied from doop (https://github.com/kgoedecke/doop), Copyright (c) Kevin Goedecke and
 // contributors. Licensed under the GNU Affero General Public License v3.0; see LICENSE-AGPL.
 // Drawing tools (S-9): what each tool creates, written as plain CSS on the new layer.
-import { type CSSStyle, type DesignNode, newId } from '../../shared/document'
+import { type CSSStyle, type DesignNode, holdsLayers, newId } from '../../shared/document'
 import { sanitizeSvg } from '../document/media'
 import type { DocumentStore } from '../document/store'
 import { findNode } from '../document/tree'
@@ -42,11 +42,10 @@ export interface Placement {
   clicked: boolean
 }
 
-/** The deepest frame or artboard on a path of node IDs (outermost first). */
+/** The deepest frame or artboard on a path of node IDs (outermost first); shapes are skipped. */
 export function containerOn(path: string[], nodes: DesignNode[]): string | null {
   for (let i = path.length - 1; i >= 0; i--) {
-    const type = findNode(nodes, path[i])?.type
-    if (type === 'frame' || type === 'artboard') return path[i]
+    if (holdsLayers(findNode(nodes, path[i]))) return path[i]
   }
   return null
 }
@@ -114,7 +113,7 @@ export function drawShape(store: DocumentStore, placement: Placement, shape: 're
     const { left, top } = placement.box
     return insert(store, placement, { id: newId(), type: 'artboard', name, style: { left: px(left), top: px(top), width: px(size.width), height: px(size.height), ...look }, children: [] })
   }
-  return insert(store, placement, { id: newId(), type: 'frame', name, style: { ...placedStyle(placement, size), ...look }, children: [] })
+  return insert(store, placement, { id: newId(), type: 'frame', name, shape, style: { ...placedStyle(placement, size), ...look }, children: [] })
 }
 
 /** An empty text layer, auto-width on a click or fixed-width on a drag. Editing starts right after. */

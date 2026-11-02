@@ -27,6 +27,8 @@ export interface DesignNode {
   exports?: ExportSetting[]
   /** Locked layers (S-18) cannot be selected or moved on the canvas. Not CSS. */
   locked?: boolean
+  /** Drawn with the Rectangle or Circle tool: a shape, which holds no layers (D-14). */
+  shape?: 'rectangle' | 'circle'
   /** A hidden layer's `display` before it was hidden ('' when it had none), restored on show. */
   hiddenDisplay?: string
 }
@@ -187,6 +189,11 @@ export function migrateAssetUrls(document: DesignDocument): DesignDocument {
   }
   const pages = document.pages.map((page) => ({ ...page, nodes: page.nodes.map(node) }))
   return changed ? { ...document, pages } : document
+}
+
+/** Whether layers can go inside this node: artboards and frames, but not drawn shapes (D-14). */
+export function holdsLayers(node: DesignNode | null | undefined): boolean {
+  return !!node && (node.type === 'artboard' || (node.type === 'frame' && !node.shape))
 }
 
 export function newId(): string {

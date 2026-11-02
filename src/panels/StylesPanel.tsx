@@ -2,7 +2,7 @@
 // raw CSS view for everything else. Every change goes through the document engine as one undo step.
 import { useCallback, useEffect, useMemo, useRef, useState, memo } from 'react'
 
-import type { CSSStyle, DesignNode, Token } from '../../shared/document'
+import { type CSSStyle, type DesignNode, holdsLayers, type Token } from '../../shared/document'
 import { type DocumentStore, useStore } from '../document/store'
 import type { StyleUpdate } from '../document/styles'
 import { findNode } from '../document/tree'
@@ -243,7 +243,7 @@ export const StylesPanel = memo(function StylesPanel({ store, nodes, selection, 
   const hasBackgroundImage = !allImages && selected.every((node) => !!node.style.backgroundImage && /url\(/.test(String(node.style.backgroundImage)))
   const anyArtboard = selected.some((node) => node.type === 'artboard')
   const absolute = sharedValue(selected, 'position') === 'absolute'
-  const containers = selected.every((node) => node.type === 'frame' || node.type === 'artboard')
+  const containers = selected.every(holdsLayers)
   const flex = sharedValue(selected, 'display') === 'flex'
 
   return (
@@ -295,9 +295,9 @@ export const StylesPanel = memo(function StylesPanel({ store, nodes, selection, 
               options={['flex-start', 'center', 'flex-end', 'space-between', 'space-around', 'space-evenly']}
             />
             <NumberField editor={editor} property="gap" label="Gap" placeholder="0" />
-            <NumberField editor={editor} property="padding" label="Padding" placeholder="0" />
           </>
         )}
+        <NumberField editor={editor} property="padding" label="Padding" placeholder="0" />
       </Group>
 
       <Group title="Size">

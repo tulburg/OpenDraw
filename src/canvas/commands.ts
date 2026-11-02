@@ -1,6 +1,6 @@
 // Edit commands on the selection (S-6 Req 6): delete, duplicate, copy, paste and select all. Each
 // is one transaction, so one undo step.
-import type { DesignNode } from '../../shared/document'
+import { type DesignNode, holdsLayers } from '../../shared/document'
 import { toHTML } from '../../shared/html-out'
 import { toJSX } from '../../shared/mcp/jsx'
 import type { DocumentStore, Transaction } from '../document/store'
@@ -77,7 +77,7 @@ export function paste(store: DocumentStore, json: string, measure: Measure): boo
     }
     if (target && layers.length > 0) {
       const copies = layers.map((node) => cloneWithNewIds(node))
-      if (target.type === 'frame' || target.type === 'artboard') tx.insertNodes(target.id, undefined, copies)
+      if (holdsLayers(target)) tx.insertNodes(target.id, undefined, copies)
       else {
         const { parentId, index } = tx.locate(target.id)
         tx.insertNodes(parentId, index + 1, copies)
