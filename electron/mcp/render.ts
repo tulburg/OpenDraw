@@ -69,6 +69,15 @@ function withArtboard<T>(target: RenderTarget, artboard: DesignNode, scale: numb
     win.webContents.setZoomFactor(scale)
     win.setContentSize(Math.ceil(width * scale), Math.ceil(height * scale))
     await requestRenderer(win.webContents, 'render:show', artboard)
+    // A width or height such as fit-content is not a number: size the window to the drawn artboard.
+    if (!Number.parseFloat(String(artboard.style.width)) || !Number.parseFloat(String(artboard.style.height))) {
+      const drawn = await win.webContents.executeJavaScript(`(() => {
+        const r = document.querySelector('[data-node-id="${escapeSelectorId(artboard.id)}"]').getBoundingClientRect()
+        return { width: r.width, height: r.height }
+      })()`)
+      win.setContentSize(Math.ceil(drawn.width * scale), Math.ceil(drawn.height * scale))
+      await requestRenderer(win.webContents, 'render:show', artboard)
+    }
     return use(win)
   })
   queue = run.catch(() => undefined)
