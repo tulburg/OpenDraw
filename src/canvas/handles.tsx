@@ -145,13 +145,16 @@ export function handleInfoOf(el: HTMLElement, node: DesignNode): HandleInfo {
   return { type: node.type, radii, border, flex }
 }
 
-const HAS_RADIUS = new Set<DesignNode['type']>(['frame', 'image', 'svg', 'artboard'])
+const HAS_RADIUS = new Set<DesignNode['type']>(['frame', 'image', 'svg'])
+/** Artboards resize from the right and bottom only, like Figma's top-level frames (S-40). */
+const ARTBOARD_HANDLES: Handle[] = ['e', 'se', 's']
 
 /** Which handle sets a layer shows (S-10 Req 1). */
 export function handleSets(info: HandleInfo, frame: Frame) {
   const roomy = frame.width >= MIN_HANDLE_SIZE && frame.height >= MIN_HANDLE_SIZE
   return {
     resize: true,
+    handles: info.type === 'artboard' ? ARTBOARD_HANDLES : HANDLES,
     rotate: roomy && info.type !== 'artboard',
     radius: roomy && HAS_RADIUS.has(info.type),
     padding: roomy && !!info.flex,
@@ -209,7 +212,7 @@ export function SelectionFrame({
             ))}
           {sets.rotate &&
             CORNERS.map((corner) => <div key={corner} className="rotate-zone" data-rotate={corner} title={`Rotate ${round(frame.angle)}°`} />)}
-          {HANDLES.map((handle) => {
+          {sets.handles.map((handle) => {
             const hx = handle.includes('w') ? 0 : handle.includes('e') ? width : width / 2
             const hy = handle.includes('n') ? 0 : handle.includes('s') ? height : height / 2
             return <div key={handle} className="resize-handle" data-handle={handle} style={{ left: hx, top: hy }} />

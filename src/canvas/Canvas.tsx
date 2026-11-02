@@ -99,7 +99,13 @@ type Gesture = { pointerId: number; startX: number; startY: number; active: bool
   | { kind: 'radius'; id: string; corner: Corner; origin: Record<Corner, number>; max: number; angle: number }
   | { kind: 'padding'; id: string; side: Side; origin: Record<Side, number>; angle: number }
   | { kind: 'gap'; id: string; axis: 'x' | 'y'; origin: number; angle: number }
-  | { kind: 'marquee'; base: string[]; rect: Rect }
+  | {
+      kind: 'marquee'
+      base: string[]
+      rect: Rect
+      /** Started on an artboard's empty area: selects the artboard's layers, and a click selects the artboard (S-40). */
+      within?: string
+    }
   | { kind: 'draw'; tool: 'artboard' | 'frame' | 'rectangle' | 'circle' | 'text' | 'image'; parentId: string | null; rect: Rect; start: { x: number; y: number }; targets: Rect[] }
 )
 
@@ -637,6 +643,10 @@ export function Canvas({
       setGesture({ ...base, kind: 'marquee', base: event.shiftKey ? selection : [], rect: { ...point, width: 0, height: 0 } })
       return
     }
+    // A drag on an artboard's empty area selects its layers; only its label moves it (S-40).
+    const artboardBody = findNode(nodes, picked)?.type === 'artboard' && !target.closest('.artboard-label')
+    const marqueeIn = (keep: string[]) => setGesture({ ...base, kind: 'marquee', base: keep, rect: { ...canvasPoint(event), width: 0, height: 0 }, within: picked })
+    if (artboardBody && event.shiftKey) return marqueeIn(selection)
     if (event.shiftKey) {
       store.select(selection.includes(picked) ? selection.filter((id) => id !== picked) : [...selection, picked])
       return
@@ -654,6 +664,7 @@ export function Canvas({
       setGesture({ ...base, kind: 'move', origins: offsetsOf(selection), box: bounds, siblings, parent, duplicated: false, dropArtboard: null, clickSelects: picked })
       return
     }
+    if (artboardBody) return marqueeIn([])
     const selected = selection.includes(picked) ? selection : [picked]
     if (selected !== selection) store.select(selected)
 
@@ -874,7 +885,8 @@ export function Canvas({
           height: Math.abs(point.y - start.y)
         }
         const bounds = ref.current!.getBoundingClientRect()
-        const touched = nodes
+        const candidates = next.within ? (findNode(nodes, next.within)?.children ?? []) : nodes
+        const touched = candidates
           .filter((node) => {
             if (node.locked) return false
             const r = nodeElement(ref.current!, node.id)?.getBoundingClientRect()
@@ -905,6 +917,7 @@ export function Canvas({
     if (finished.kind === 'draw') return finishDraw(finished)
     if (!finished.active) {
       if (finished.kind === 'move' && finished.clickSelects) store.select([finished.clickSelects])
+      if (finished.kind === 'marquee' && finished.within) store.select(event.shiftKey ? [...new Set([...finished.base, finished.within])] : [finished.within])
       return
     }
     if (STYLE_GESTURES[finished.kind]) {
