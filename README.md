@@ -232,4 +232,4 @@ OpenDraw started from a study of [open-pencil](https://github.com/open-pencil/op
 
 ## License
 
-[MIT](LICENSE)
+OpenDraw's own files are under the [MIT License](LICENSE). OpenDraw includes code copied from [doop](https://github.com/kgoedecke/doop), which is under the [GNU AGPL v3.0](LICENSE-AGPL); those files keep doop's notice and are listed in [NOTICE](NOTICE). Because of them, OpenDraw as a whole is distributed under AGPL-3.0.
