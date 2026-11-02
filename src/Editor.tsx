@@ -1,5 +1,6 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
+import type { ViewCommand } from '../shared/commands'
 import type { CSSStyle, OpenedDocument, Viewport } from '../shared/document'
 import { Canvas } from './canvas/Canvas'
 import { familiesIn, pageFamilies } from '../shared/fonts'
@@ -8,10 +9,11 @@ import { TokensContext } from './canvas/NodeView'
 import { measuringAll } from './canvas/offscreen'
 import { ensureFonts } from './fonts/loader'
 import { tokenStyle } from '../shared/tokens'
-import { fitViewport, nextZoomStep, zoomAt } from './canvas/viewport'
+import { fitRects, fitViewport, nextZoomStep, zoomAt } from './canvas/viewport'
 import { type DocumentStore, useStore } from './document/store'
 import { useWorking, type WorkingIndicators } from './mcp/working'
 import { Notice, showNotice } from './panels/notice'
+import { VIEW_COMMAND_EVENT } from './panels/TopBar'
 import { LayersPanel } from './panels/LayersPanel'
 import { StylesPanel } from './panels/StylesPanel'
 
@@ -124,12 +126,45 @@ export function Editor({ opened, store, working, topBar, onViewState }: EditorPr
   }, [store, selection, doc])
 
 
+  /** The View commands (S-24), from the keys, the View menu and the zoom menu in the top bar. */
+  const runView = useCallback(
+    (command: ViewCommand) => {
+      const size = canvasSize.current
+      const center = size ? { x: size.width / 2, y: size.height / 2 } : { x: 0, y: 0 }
+      if (command === 'zoom-in') setViewport((v) => v && zoomAt(v, nextZoomStep(v.zoom, 1), center))
+      else if (command === 'zoom-out') setViewport((v) => v && zoomAt(v, nextZoomStep(v.zoom, -1), center))
+      else if (command === 'zoom-100') setViewport((v) => v && zoomAt(v, 1, center))
+      else if (command === 'zoom-fit') fit()
+      else {
+        // The selected layers' boxes in world units, measured on the canvas (S-24 Req 4).
+        const ids = store.getState().selection
+        const canvas = document.querySelector('.canvas')
+        if (ids.length === 0 || !canvas || !size) return
+        setViewport((v) => {
+          if (!v) return v
+          const origin = canvas.getBoundingClientRect()
+          const rects = measuringAll(() =>
+            ids
+              .map((id) => document.querySelector(`[data-node-id="${CSS.escape(id)}"]`)?.getBoundingClientRect())
+              .filter((r): r is DOMRect => !!r && (r.width > 0 || r.height > 0))
+              .map((r) => ({ x: (r.left - origin.left - v.x) / v.zoom, y: (r.top - origin.top - v.y) / v.zoom, width: r.width / v.zoom, height: r.height / v.zoom }))
+          )
+          return rects.length > 0 ? fitRects(rects, size) : v
+        })
+      }
+    },
+    [fit, store]
+  )
+  useEffect(() => window.opendraw.onViewCommand(runView), [runView])
+  useEffect(() => {
+    const onZoomMenu = (event: Event) => runView((event as CustomEvent<ViewCommand>).detail)
+    window.addEventListener(VIEW_COMMAND_EVENT, onZoomMenu)
+    return () => window.removeEventListener(VIEW_COMMAND_EVENT, onZoomMenu)
+  }, [runView])
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const mod = event.metaKey || event.ctrlKey
-      const center = canvasSize.current
-        ? { x: canvasSize.current.width / 2, y: canvasSize.current.height / 2 }
-        : { x: 0, y: 0 }
       const arrange = arrangeShortcut(event)
       if (arrange) {
         if (isEditable(document.activeElement)) return
@@ -142,21 +177,23 @@ export function Editor({ opened, store, working, topBar, onViewState }: EditorPr
         runEditCommand(store, event.shiftKey ? 'redo' : 'undo')
       } else if (mod && (event.key === '=' || event.key === '+')) {
         event.preventDefault()
-        setViewport((v) => v && zoomAt(v, nextZoomStep(v.zoom, 1), center))
+        runView('zoom-in')
       } else if (mod && event.key === '-') {
         event.preventDefault()
-        setViewport((v) => v && zoomAt(v, nextZoomStep(v.zoom, -1), center))
+        runView('zoom-out')
       } else if (mod && event.key === '0') {
         event.preventDefault()
-        setViewport((v) => v && zoomAt(v, 1, center))
-      } else if (event.shiftKey && !mod && event.code === 'Digit1') {
+        runView('zoom-100')
+      } else if (event.shiftKey && !mod && !event.altKey && (event.code === 'Digit1' || event.code === 'Digit2')) {
+        // Shift+1 and Shift+2 type ! and @ in a field.
+        if (isEditable(document.activeElement)) return
         event.preventDefault()
-        fit()
+        runView(event.code === 'Digit1' ? 'zoom-fit' : 'zoom-selection')
       }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [fit, store])
+  }, [runView, store])
 
   const selectLayer = useCallback(
     (id: string, additive: boolean) => {

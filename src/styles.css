@@ -94,6 +94,62 @@ body {
   color: var(--text-muted);
 }
 
+/* The zoom menu (S-24 Req 5) */
+.zoom-menu {
+  position: relative;
+  -webkit-app-region: no-drag;
+}
+.zoom-menu .zoom-readout {
+  height: 24px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+.zoom-menu .zoom-readout:hover:not(:disabled) {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+.zoom-popover {
+  position: absolute;
+  top: 30px;
+  right: 0;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  z-index: 20;
+}
+.zoom-popover button {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  height: 26px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.zoom-popover button:hover {
+  background: var(--accent);
+  color: #ffffff;
+}
+.zoom-popover kbd {
+  font: inherit;
+  color: inherit;
+  opacity: 0.7;
+}
+
 .panel {
   background: var(--panel);
   overflow: auto;
@@ -827,6 +883,16 @@ body {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+.tab-rename {
+  width: 120px;
+  height: 20px;
+  padding: 0 4px;
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
 }
 
 .tab-close {

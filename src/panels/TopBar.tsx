@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 
+import { shortcutLabel, VIEW_ITEMS, type ViewCommand } from '../../shared/commands'
 import { setUserName, useUserName } from '../comments/user'
+
+/** The zoom menu's commands reach the editor as this window event (S-24 Req 5). */
+export const VIEW_COMMAND_EVENT = 'opendraw:view-command'
 
 interface TopBarProps {
   tabs: { id: string; name: string }[]
@@ -12,10 +16,13 @@ interface TopBarProps {
   onSelect: (id: string) => void
   onClose: (id: string) => void
   onReorder: (ids: string[]) => void
+  /** The tab whose name is being edited (Rename File, S-24). */
+  renamingId?: string | null
+  onRename?: (id: string, name: string | null) => void
 }
 
 /** The home button and one tab per open file (S-13 Req 3); tabs close and reorder by dragging. */
-export function TopBar({ tabs, activeId, home, zoom, onHome, onSelect, onClose, onReorder }: TopBarProps) {
+export function TopBar({ tabs, activeId, home, zoom, onHome, onSelect, onClose, onReorder, renamingId, onRename }: TopBarProps) {
   const [dragging, setDragging] = useState<string | null>(null)
 
   const dropOn = (targetId: string) => {
@@ -52,9 +59,25 @@ export function TopBar({ tabs, activeId, home, zoom, onHome, onSelect, onClose, 
             }}
             onClick={() => onSelect(tab.id)}
           >
-            <span className="tab-name" {...(tab.id === activeId ? { 'data-testid': 'file-name' } : {})}>
-              {tab.name}
-            </span>
+            {tab.id === renamingId ? (
+              <input
+                className="tab-rename"
+                data-testid="tab-rename"
+                autoFocus
+                defaultValue={tab.name}
+                onFocus={(event) => event.currentTarget.select()}
+                onClick={(event) => event.stopPropagation()}
+                onBlur={(event) => onRename?.(tab.id, event.currentTarget.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') event.currentTarget.blur()
+                  if (event.key === 'Escape') onRename?.(tab.id, null)
+                }}
+              />
+            ) : (
+              <span className="tab-name" {...(tab.id === activeId ? { 'data-testid': 'file-name' } : {})}>
+                {tab.name}
+              </span>
+            )}
             <button
               type="button"
               className="tab-close"
@@ -71,10 +94,42 @@ export function TopBar({ tabs, activeId, home, zoom, onHome, onSelect, onClose, 
         ))}
       </div>
       <UserButton />
-      <div className="zoom-readout" data-testid="zoom-readout">
-        {zoom === null ? '' : `${Math.round(zoom * 100)}%`}
-      </div>
+      <ZoomMenu zoom={zoom} />
     </header>
+  )
+}
+
+/** The zoom readout; clicking it lists the View menu's zoom commands (S-24 Req 5). */
+function ZoomMenu({ zoom }: { zoom: number | null }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const down = (event: PointerEvent) => !ref.current?.contains(event.target as Node) && setOpen(false)
+    window.addEventListener('pointerdown', down, true)
+    return () => window.removeEventListener('pointerdown', down, true)
+  }, [open])
+  const run = (command: ViewCommand) => {
+    setOpen(false)
+    window.dispatchEvent(new CustomEvent(VIEW_COMMAND_EVENT, { detail: command }))
+  }
+  const mac = window.opendraw.platform === 'darwin'
+  return (
+    <div className="zoom-menu" ref={ref}>
+      <button type="button" className="zoom-readout" data-testid="zoom-readout" disabled={zoom === null} onClick={() => setOpen(!open)}>
+        {zoom === null ? '' : `${Math.round(zoom * 100)}%`}
+      </button>
+      {open && zoom !== null && (
+        <div className="zoom-popover" role="menu" data-testid="zoom-popover">
+          {VIEW_ITEMS.map((item) => (
+            <button key={item.command} type="button" role="menuitem" data-command={item.command} onClick={() => run(item.command)}>
+              <span>{item.label}</span>
+              {item.accelerator && <kbd>{shortcutLabel(item.accelerator, mac)}</kbd>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 

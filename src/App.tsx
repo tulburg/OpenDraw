@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+import { type FileCommand, fileShortcut } from '../shared/commands'
 import type { OpenedDocument, Viewport } from '../shared/document'
 import type { WriteToolName } from '../shared/mcp/definitions'
 import { startAutosave } from './document/autosave'
@@ -183,6 +184,51 @@ export function App() {
     }
   }, [openTab])
 
+  // The File commands (S-24 Req 1, 2), from the menu bar and their keys.
+  const folderRef = useRef<string | undefined>(undefined)
+  const [renamingId, setRenamingId] = useState<string | null>(null)
+  const runFile = useCallback(
+    async (command: FileCommand) => {
+      const activeTab = homeRef.current ? null : (tabsRef.current.find((t) => t.id === activeRef.current) ?? null)
+      if (command === 'new-file') {
+        const file = await window.opendraw.createFile({ parentId: folderRef.current })
+        await openFile(file.id)
+      } else if (command === 'open') setHome(true)
+      else if (command === 'close-tab') {
+        if (activeTab) closeTab(activeTab.id)
+      } else if (command === 'close-window') window.close()
+      else if (command === 'duplicate-file' && activeTab) {
+        // The copy goes next to the original.
+        const { items } = await window.opendraw.listResources({})
+        const parentId = items.find((r) => r.id === activeTab.id)?.parentId
+        const file = await window.opendraw.createFile({ cloneFileId: activeTab.id, parentId })
+        await openFile(file.id)
+      } else if (command === 'rename-file' && activeTab) setRenamingId(activeTab.id)
+    },
+    [closeTab, openFile]
+  )
+  useEffect(() => {
+    const run = (command: FileCommand) => void runFile(command).catch((err) => console.error(err))
+    const onKeyDown = (event: KeyboardEvent) => {
+      const command = fileShortcut(event)
+      if (!command) return
+      event.preventDefault()
+      run(command)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    const offMenu = window.opendraw.onFileCommand(run)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      offMenu()
+    }
+  }, [runFile])
+  const renameFile = useCallback((id: string, name: string | null) => {
+    setRenamingId(null)
+    const tab = tabsRef.current.find((t) => t.id === id)
+    if (!tab || name === null || !name.trim() || name.trim() === fileNameOf(tab.opened.path)) return
+    void window.opendraw.renameResource({ resourceId: id, name: name.trim() }).catch((err) => console.error(err))
+  }, [])
+
   // A tab remembers where it was when another one comes to the front.
   const onViewState = useCallback((tab: Tab, viewport: Viewport | null) => {
     tab.opened.viewport = viewport
@@ -205,6 +251,8 @@ export function App() {
       }}
       onClose={closeTab}
       onReorder={reorderTabs}
+      renamingId={home ? null : renamingId}
+      onRename={renameFile}
     />
   )
 
@@ -212,7 +260,14 @@ export function App() {
     return (
       <div className="app app-home" data-platform={window.opendraw.platform}>
         {topBar(null)}
-        <FileBrowser openIds={tabs.map((t) => t.id)} onOpen={(id) => void openFile(id)} onConnect={() => setDialog('connect')} />
+        <FileBrowser
+          openIds={tabs.map((t) => t.id)}
+          onOpen={(id) => void openFile(id)}
+          onConnect={() => setDialog('connect')}
+          onFolderChange={(id) => {
+            folderRef.current = id
+          }}
+        />
         <AppDialogs open={dialog} onClose={closeDialog} />
       </div>
     )

@@ -960,5 +960,36 @@
         "detail": "card, title: false,false -> true,true -> false,false"
       }
     ]
+  },
+  "S-24": {
+    "at": "2026-11-02T08:57:45.708Z",
+    "running": false,
+    "results": [
+      {
+        "name": "Cmd+N opens a new untitled tab saved on disk; Cmd+W closes it and the window stays, showing the previous tab, then the home view",
+        "pass": true,
+        "detail": "Untitled tab and Untitled.opendraw on disk; Cmd+W showed Alpha, then the home view"
+      },
+      {
+        "name": "New File from a folder in the file browser puts the file in that folder",
+        "pass": true,
+        "detail": "File > New File made Projects/Untitled.opendraw; File > Close Tab closed it"
+      },
+      {
+        "name": "Shift+2 with a small frame selected centers it and zooms so it fills the view with padding",
+        "pass": true,
+        "detail": "zoom 0.69 -> 20.80; frame 832 x 624 px, centered within 0.0 px"
+      },
+      {
+        "name": "Each View menu zoom item matches its shortcut; the zoom readout lists the same commands",
+        "pass": true,
+        "detail": "Zoom to 100% 100%, Zoom In 200%, Zoom Out 50%, Zoom to Fit 69%, Zoom to Selection 2080%; readout menu lists 5 commands; its Zoom In gave 3200%"
+      },
+      {
+        "name": "Duplicate File opens a copy next to the original; Rename File renames the active file on disk",
+        "pass": true,
+        "detail": "tabs Alpha, Beta; Beta.opendraw on disk"
+      }
+    ]
   }
 }

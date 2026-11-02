@@ -50,7 +50,11 @@ export function toScreen(rect: Rect, viewport: Viewport): Rect {
 /** Centers the nodes in a canvas of the given size, zoomed to fit with padding. */
 export function fitViewport(nodes: DesignNode[], size: { width: number; height: number }): Viewport {
   if (nodes.length === 0) return { x: size.width / 2, y: size.height / 2, zoom: 1 }
-  const rects = nodes.map(nodeRect)
+  return fitRects(nodes.map(nodeRect), size)
+}
+
+/** Centers the rectangles (world units) in a canvas of the given size, zoomed to fit with padding. */
+export function fitRects(rects: Rect[], size: { width: number; height: number }): Viewport {
   const left = Math.min(...rects.map((r) => r.x))
   const top = Math.min(...rects.map((r) => r.y))
   const right = Math.max(...rects.map((r) => r.x + r.width))

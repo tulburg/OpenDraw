@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url'
 
 import { app, BrowserWindow, dialog, ipcMain, Menu, screen } from 'electron'
 
+import { FILE_ITEMS, VIEW_ITEMS } from '../shared/commands'
 import type { DesignDocument, Viewport } from '../shared/document'
 import { closeRenderWindow, RENDER_PARTITION, renderTargetFor } from './mcp/render'
 import { type DiscoveryInfo, startMcpServer } from './mcp/server'
@@ -87,7 +88,8 @@ function sendEdit(command: 'undo' | 'redo') {
 }
 
 // No zoom roles: cmd/ctrl + plus, minus and 0 belong to the canvas, not to page zoom.
-// Undo and Redo show their shortcuts but do not register them, so the keys reach the renderer.
+// Undo and Redo, and the File and View items (S-24), show their shortcuts but do not register them,
+// so the keys reach the renderer.
 function buildMenu() {
   const isMac = process.platform === 'darwin'
   const template: Electron.MenuItemConstructorOptions[] = [
@@ -109,7 +111,25 @@ function buildMenu() {
           }
         ]
       : []),
-    { role: 'fileMenu' },
+    {
+      label: 'File',
+      submenu: [
+        ...FILE_ITEMS.map((item): Electron.MenuItemConstructorOptions =>
+          item === null
+            ? { type: 'separator' }
+            : {
+                label: item.label,
+                ...(item.accelerator ? { accelerator: item.accelerator, registerAccelerator: false } : {}),
+                click: (_menuItem, window) => {
+                  const win = window instanceof BrowserWindow ? window : BrowserWindow.getFocusedWindow()
+                  if (item.command === 'close-window') win?.close()
+                  else win?.webContents.send('file:command', item.command)
+                }
+              }
+        ),
+        ...(isMac ? [] : [{ type: 'separator' as const }, { role: 'quit' as const }])
+      ]
+    },
     {
       label: 'Edit',
       submenu: [
@@ -139,7 +159,20 @@ function buildMenu() {
     },
     {
       label: 'View',
-      submenu: [{ role: 'reload' }, { role: 'toggleDevTools' }, { type: 'separator' }, { role: 'togglefullscreen' }]
+      submenu: [
+        ...VIEW_ITEMS.map((item) => ({
+          label: item.label,
+          accelerator: item.accelerator,
+          registerAccelerator: false,
+          click: (_menuItem: Electron.MenuItem, window: Electron.BaseWindow | undefined) =>
+            (window instanceof BrowserWindow ? window : BrowserWindow.getFocusedWindow())?.webContents.send('view:command', item.command)
+        })),
+        { type: 'separator' },
+        { role: 'reload' },
+        { role: 'toggleDevTools' },
+        { type: 'separator' },
+        { role: 'togglefullscreen' }
+      ]
     },
     { role: 'windowMenu' },
     {
@@ -339,6 +372,18 @@ if (process.env.OPENDRAW_TEST) {
     })
   )
   ipcMain.handle('test:show-dialog', (_event, which: 'connect' | 'about') => showAppDialog(which))
+  /** Clicks an application menu item by its labels, e.g. ['View', 'Zoom In'], as the user would. */
+  ipcMain.handle('test:menu', (event, labels: string[]) => {
+    let items = Menu.getApplicationMenu()?.items ?? []
+    let item: Electron.MenuItem | undefined
+    for (const label of labels) {
+      item = items.find((i) => i.label === label)
+      items = item?.submenu?.items ?? []
+    }
+    if (!item) throw new Error(`No menu item ${labels.join(' > ')}`)
+    item.click(undefined, BrowserWindow.fromWebContents(event.sender) ?? undefined, event.sender)
+    return true
+  })
   ipcMain.handle('test:quit', () => {
     setImmediate(() => app.quit())
   })

@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
 import type { AppInfo } from '../shared/app-info'
+import type { FileCommand, ViewCommand } from '../shared/commands'
 import type { DesignDocument, OpenedDocument, Viewport } from '../shared/document'
 import type { ExportedFile, ExportItem } from './export'
 import type { ListedResource } from './resource-tools'
@@ -74,6 +75,17 @@ const api = {
     ipcRenderer.on('edit:command', listener)
     return () => ipcRenderer.removeListener('edit:command', listener)
   },
+  /** File and View commands picked from the menu bar (S-24). */
+  onFileCommand: (handler: (command: FileCommand) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, command: FileCommand) => handler(command)
+    ipcRenderer.on('file:command', listener)
+    return () => ipcRenderer.removeListener('file:command', listener)
+  },
+  onViewCommand: (handler: (command: ViewCommand) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, command: ViewCommand) => handler(command)
+    ipcRenderer.on('view:command', listener)
+    return () => ipcRenderer.removeListener('view:command', listener)
+  },
   /** Arrange commands picked from the menu bar (S-19). */
   onArrangeCommand: (handler: (command: string) => void): (() => void) => {
     const listener = (_event: Electron.IpcRendererEvent, command: string) => handler(command)
@@ -103,7 +115,8 @@ if (process.env.OPENDRAW_TEST) {
     setPosition: (x: number, y: number) => ipcRenderer.invoke('test:set-position', x, y),
     setExportDir: (dir: string) => ipcRenderer.invoke('test:set-export-dir', dir),
     quit: () => ipcRenderer.invoke('test:quit'),
-    showDialog: (which: 'connect' | 'about') => ipcRenderer.invoke('test:show-dialog', which)
+    showDialog: (which: 'connect' | 'about') => ipcRenderer.invoke('test:show-dialog', which),
+    menu: (labels: string[]) => ipcRenderer.invoke('test:menu', labels)
   })
 }
 

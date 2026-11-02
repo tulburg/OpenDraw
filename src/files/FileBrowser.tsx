@@ -119,10 +119,15 @@ interface FileBrowserProps {
   openIds: string[]
   onOpen: (id: string) => void
   onConnect: () => void
+  /** Reports the folder shown; New File from the menu goes there (S-24). */
+  onFolderChange?: (id: string | undefined) => void
 }
 
-export function FileBrowser({ openIds, onOpen, onConnect }: FileBrowserProps) {
+export function FileBrowser({ openIds, onOpen, onConnect, onFolderChange }: FileBrowserProps) {
   const [folderId, setFolderId] = useState<string | undefined>(undefined)
+  useEffect(() => {
+    onFolderChange?.(folderId)
+  }, [folderId, onFolderChange])
   const [archive, setArchive] = useState(false)
   const [all, setAll] = useState<ListedResource[]>([])
   const [dragging, setDragging] = useState<string | null>(null)
