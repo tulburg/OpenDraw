@@ -1,11 +1,10 @@
 {
   "discussing": [
-    "S-12",
-    "S-14"
+    "S-15",
+    "S-16",
+    "S-17"
   ],
-  "next": [
-    "S-13"
-  ],
-  "note": "Building S-13: files, folders and resources",
-  "at": "2026-11-02T03:14:37.018Z"
+  "next": [],
+  "note": "Next specs drafted: export, comments, agent helpers",
+  "at": "2026-11-02T03:51:44.418Z"
 }
