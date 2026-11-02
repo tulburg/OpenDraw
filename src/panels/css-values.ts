@@ -138,20 +138,33 @@ export function formatColor({ r, g, b, a }: RGBA, format: ColorFormat): string {
   return alpha < 1 ? `hsla(${body}, ${alpha})` : `hsl(${body})`
 }
 
+// Edits replace only the artboards they change, so scans of the whole page are kept per artboard and
+// only changed artboards are scanned again (S-21).
+const colorsByArtboard = new WeakMap<DesignNode, Map<string, number>>()
+const fontsByArtboard = new WeakMap<DesignNode, string[]>()
+
 /** Colors used anywhere in the document, most used first, as hex. */
 export function documentColors(nodes: DesignNode[], limit = 16): string[] {
   const counts = new Map<string, number>()
-  const visit = (node: DesignNode) => {
-    for (const [property, value] of Object.entries(node.style)) {
-      if (!/color$/i.test(property)) continue
-      const rgba = parseColor(String(value))
-      if (!rgba) continue
-      const hex = formatColor(rgba, 'hex')
-      counts.set(hex, (counts.get(hex) ?? 0) + 1)
+  for (const artboard of nodes) {
+    let own = colorsByArtboard.get(artboard)
+    if (!own) {
+      const found = new Map<string, number>()
+      const visit = (node: DesignNode) => {
+        for (const [property, value] of Object.entries(node.style)) {
+          if (!/color$/i.test(property)) continue
+          const rgba = parseColor(String(value))
+          if (!rgba) continue
+          const hex = formatColor(rgba, 'hex')
+          found.set(hex, (found.get(hex) ?? 0) + 1)
+        }
+        node.children.forEach(visit)
+      }
+      visit(artboard)
+      colorsByArtboard.set(artboard, (own = found))
     }
-    node.children.forEach(visit)
+    for (const [hex, n] of own) counts.set(hex, (counts.get(hex) ?? 0) + n)
   }
-  nodes.forEach(visit)
   return [...counts.entries()]
     .sort((a, b) => b[1] - a[1])
     .slice(0, limit)
@@ -161,12 +174,20 @@ export function documentColors(nodes: DesignNode[], limit = 16): string[] {
 /** Font families used in the document, by first family name. */
 export function documentFonts(nodes: DesignNode[]): string[] {
   const fonts = new Set<string>()
-  const visit = (node: DesignNode) => {
-    const family = node.style.fontFamily
-    if (family) fonts.add(String(family).split(',')[0].trim().replace(/^["']|["']$/g, ''))
-    node.children.forEach(visit)
+  for (const artboard of nodes) {
+    let own = fontsByArtboard.get(artboard)
+    if (!own) {
+      const found = new Set<string>()
+      const visit = (node: DesignNode) => {
+        const family = node.style.fontFamily
+        if (family) found.add(String(family).split(',')[0].trim().replace(/^["']|["']$/g, ''))
+        node.children.forEach(visit)
+      }
+      visit(artboard)
+      fontsByArtboard.set(artboard, (own = [...found]))
+    }
+    for (const font of own) fonts.add(font)
   }
-  nodes.forEach(visit)
   return [...fonts]
 }
 

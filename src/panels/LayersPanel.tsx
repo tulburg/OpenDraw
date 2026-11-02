@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { memo, type RefObject, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
 import type { DesignNode } from '../../shared/document'
 import { type DocumentStore, type Transaction, useStore } from '../document/store'
@@ -6,6 +6,7 @@ import { CommentsPanel } from './CommentsPanel'
 import { LayerMenu } from './LayerMenu'
 import { PagesList } from './PagesList'
 import { TokensPanel } from './TokensPanel'
+import { useRowWindow } from './windowed'
 
 interface LayersPanelProps {
   nodes: DesignNode[]
@@ -15,6 +16,8 @@ interface LayersPanelProps {
 }
 
 const INDENT_PX = 12
+/** Matches `.layer-row` height in styles.css. */
+const ROW_PX = 28
 
 function LayerIcon({ type }: { type: DesignNode['type'] }) {
   const paths: Record<DesignNode['type'], string> = {
@@ -100,7 +103,7 @@ interface LayerTreeProps {
 }
 
 /** The layer tree (S-18): rename, drag to reorder or nest, hide, lock, collapse and a context menu. */
-function LayerTree({ store, nodes, selection, onSelect }: LayerTreeProps) {
+function LayerTree({ store, nodes, selection, onSelect, scroller }: LayerTreeProps & { scroller: RefObject<HTMLElement | null> }) {
   const fileId = useStore(store, (s) => s.document.id)
   const pageId = useStore(store, (s) => s.pageId)
   const [collapsed, setCollapsed] = useState(() => loadCollapsed(fileId))
@@ -128,8 +131,16 @@ function LayerTree({ store, nodes, selection, onSelect }: LayerTreeProps) {
 
   const closeMenu = useCallback(() => setMenu(null), [])
 
-  const rows = flatten(nodes, pageId, collapsed)
-  const rowById = new Map(rows.map((r) => [r.node.id, r]))
+  // Scrolling re-renders the tree; the rows change only with the layers or what is collapsed.
+  const rows = useMemo(() => flatten(nodes, pageId, collapsed), [nodes, pageId, collapsed])
+  const rowById = useMemo(() => new Map(rows.map((r) => [r.node.id, r])), [rows])
+  const listRef = useRef<HTMLUListElement>(null)
+  const view = useRowWindow(scroller, listRef, rows.length, ROW_PX)
+  // Keep the first selected layer in view when the selection changes on the canvas (S-6 Req 7).
+  const firstSelected = useMemo(() => (selection[0] ? rows.findIndex((r) => r.node.id === selection[0]) : -1), [rows, selection])
+  useLayoutEffect(() => {
+    if (firstSelected >= 0) view.reveal(firstSelected)
+  }, [selection, firstSelected >= 0])
   const targets = (id: string) => (selection.includes(id) ? selection : [id])
 
   const click = (event: React.MouseEvent, id: string) => {
@@ -185,8 +196,9 @@ function LayerTree({ store, nodes, selection, onSelect }: LayerTreeProps) {
 
   return (
     <>
-      <ul className="layer-list" data-testid="layer-list" onDragOver={(event) => dragging && event.preventDefault()} onDrop={(event) => (event.preventDefault(), finishDrop())}>
-        {rows.map((row) => {
+      <ul ref={listRef} className="layer-list" data-testid="layer-list" onDragOver={(event) => dragging && event.preventDefault()} onDrop={(event) => (event.preventDefault(), finishDrop())}>
+        {view.before > 0 && <li aria-hidden="true" style={{ height: view.before }} />}
+        {rows.slice(view.start, view.end).map((row) => {
           const { node } = row
           const hidden = node.style.display === 'none'
           const target = drop?.rowId === node.id && dropTarget(drop) ? drop.where : undefined
@@ -309,6 +321,7 @@ function LayerTree({ store, nodes, selection, onSelect }: LayerTreeProps) {
             </li>
           )
         })}
+        {view.after > 0 && <li aria-hidden="true" style={{ height: view.after }} />}
       </ul>
       {menu && <LayerMenu store={store} x={menu.x} y={menu.y} onClose={closeMenu} onRename={setRenaming} />}
     </>
@@ -321,14 +334,10 @@ interface CommentProps {
   onOpenThread: (id: string | null) => void
 }
 
-export function LayersPanel({ store, nodes, selection, onSelect, openThread, onOpenThread }: LayersPanelProps & CommentProps) {
-  // Keep the first selected layer in view when the selection changes on the canvas (S-6 Req 7).
+/** Memoized: panning and zooming re-render the editor, and must not re-render every layer row (S-21). */
+export const LayersPanel = memo(function LayersPanel({ store, nodes, selection, onSelect, openThread, onOpenThread }: LayersPanelProps & CommentProps) {
   const ref = useRef<HTMLElement>(null)
   const [tab, setTab] = useState<'layers' | 'tokens' | 'comments'>('layers')
-  useEffect(() => {
-    if (!selection[0]) return
-    ref.current?.querySelector(`[data-layer-id="${CSS.escape(selection[0])}"]`)?.scrollIntoView({ block: 'nearest' })
-  }, [selection])
   return (
     <aside ref={ref} className="panel layers-panel" data-testid="layers-panel">
       <PagesList store={store} />
@@ -350,8 +359,8 @@ export function LayersPanel({ store, nodes, selection, onSelect, openThread, onO
       ) : nodes.length === 0 ? (
         <div className="panel-empty">No layers on this page</div>
       ) : (
-        <LayerTree store={store} nodes={nodes} selection={selection} onSelect={onSelect} />
+        <LayerTree store={store} nodes={nodes} selection={selection} onSelect={onSelect} scroller={ref} />
       )}
     </aside>
   )
-}
+})

@@ -28,7 +28,8 @@
     "test:comments": "bun run build && bun tests/comments.test.ts",
     "test:helpers": "bun run build && bun tests/helpers.test.ts",
     "test:layers": "bun run build && bun tests/layers.test.ts",
-    "test:arrange": "bun run build && bun tests/arrange.test.ts"
+    "test:arrange": "bun run build && bun tests/arrange.test.ts",
+    "test:perf": "bun run build && bun tests/perf.test.ts"
   },
   "trustedDependencies": [
     "electron"

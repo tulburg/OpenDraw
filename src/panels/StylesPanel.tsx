@@ -1,6 +1,6 @@
 // The styles panel (S-7): edits the selected layers' CSS, grouped like Paper's design panel, with a
 // raw CSS view for everything else. Every change goes through the document engine as one undo step.
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, memo } from 'react'
 
 import type { CSSStyle, DesignNode, Token } from '../../shared/document'
 import { type DocumentStore, useStore } from '../document/store'
@@ -152,7 +152,8 @@ function RawCSS({ editor }: { editor: StyleEditor }) {
 
 const NO_TOKENS: Token[] = []
 
-export function StylesPanel({ store, nodes, selection, measure, onPreview }: StylesPanelProps) {
+/** Memoized, so panning and zooming do not re-render it (S-21). */
+export const StylesPanel = memo(function StylesPanel({ store, nodes, selection, measure, onPreview }: StylesPanelProps) {
   const selected = useMemo(
     () => selection.map((id) => findNode(nodes, id)).filter((node): node is DesignNode => node !== null),
     [nodes, selection]
@@ -361,4 +362,4 @@ export function StylesPanel({ store, nodes, selection, measure, onPreview }: Sty
       </Group>
     </aside>
   )
-}
+})

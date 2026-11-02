@@ -2,9 +2,10 @@ import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } fro
 
 import type { CSSStyle, OpenedDocument, Viewport } from '../shared/document'
 import { Canvas } from './canvas/Canvas'
-import { familiesIn } from '../shared/fonts'
+import { familiesIn, pageFamilies } from '../shared/fonts'
 import { type ArrangeCommand, arrangeShortcut, arrangeState, runArrange } from './canvas/arrange'
 import { TokensContext } from './canvas/NodeView'
+import { measuringAll } from './canvas/offscreen'
 import { ensureFonts } from './fonts/loader'
 import { tokenStyle } from '../shared/tokens'
 import { fitViewport, nextZoomStep, zoomAt } from './canvas/viewport'
@@ -29,6 +30,10 @@ function runEditCommand(store: DocumentStore, command: 'undo' | 'redo') {
 
 /** A node's rendered size in world units, or null when it is not on the canvas. */
 export function measureNode(id: string) {
+  return measuringAll(() => measureNodeNow(id))
+}
+
+function measureNodeNow(id: string) {
   const world = document.querySelector<HTMLElement>('.canvas-world')
   const el = world?.querySelector(`[data-node-id="${CSS.escape(id)}"]`)
   if (!world || !el) return null
@@ -61,7 +66,7 @@ export function Editor({ opened, store, working, topBar, onViewState }: EditorPr
   const nodes = doc.pages.find((p) => p.id === pageId)?.nodes ?? []
   const tokens = useMemo(() => tokenStyle(doc.tokens), [doc.tokens])
   // Google Fonts families in use load on demand (S-17 Req 1).
-  const families = useMemo(() => [...familiesIn(doc.pages), ...familiesIn(doc.tokens)].sort().join('\n'), [doc.pages, doc.tokens])
+  const families = useMemo(() => [...pageFamilies(doc.pages), ...familiesIn(doc.tokens)].sort().join('\n'), [doc.pages, doc.tokens])
   useEffect(() => {
     if (families) void ensureFonts(families.split('\n'))
   }, [families])

@@ -110,6 +110,12 @@ export function TextEditor({ node, style, editing }: { node: DesignNode; style: 
     selection.addRange(range)
     document.execCommand('styleWithCSS', false, 'true')
     // The DOM belongs to the browser while editing; it is read once, when editing ends.
+    return () => {
+      // A caret left on the canvas after editing makes the browser track it through every frame,
+      // which is slow on large files (S-21).
+      const after = window.getSelection()
+      if (after?.anchorNode && el.contains(after.anchorNode)) after.removeAllRanges()
+    }
   }, [])
 
   const finish = () => {

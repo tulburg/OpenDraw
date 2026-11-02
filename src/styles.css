@@ -1894,3 +1894,26 @@ body {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
   z-index: 60;
 }
+
+/* Off-screen artboards skip rendering work (S-21); measuring lays them out again for a moment. */
+.canvas-world > [data-offscreen] {
+  content-visibility: hidden;
+}
+:root[data-measure-all] .canvas-world > [data-offscreen] {
+  content-visibility: visible;
+}
+
+.canvas-world[data-moving] {
+  will-change: transform;
+}
+
+/* Long pages and comments lists skip rendering the rows out of view (S-21 Req 4). Their rows vary in
+   height, so they stay in the DOM and the browser skips them; the layers panel mounts only rows in view. */
+.page-list > li {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 28px;
+}
+.comment-row {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 56px;
+}

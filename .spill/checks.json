@@ -764,5 +764,41 @@
         "detail": "front p2,p3,p1, back p3,p2,p1"
       }
     ]
+  },
+  "S-21": {
+    "at": "2026-11-02T05:42:51.973Z",
+    "running": false,
+    "results": [
+      {
+        "name": "The stress file opens with first paint under 3 s",
+        "pass": true,
+        "detail": "1106 ms (app start included); 30900 layer elements in the DOM"
+      },
+      {
+        "name": "Pan and zoom measure 50 fps or better",
+        "pass": true,
+        "detail": "pan 120.0 fps, zoom 235.1 fps at 100%; whole-file overview pan 115.2 fps"
+      },
+      {
+        "name": "Dragging a layer drops at most 2 frames over 2 s",
+        "pass": true,
+        "detail": "0 dropped, worst frame 9.4 ms, 120.0 fps"
+      },
+      {
+        "name": "Typing in a text layer paints within 32 ms",
+        "pass": true,
+        "detail": "worst keydown to paint 24 ms; 15 of 15 keys took 16 ms or more"
+      },
+      {
+        "name": "An agent update_styles paints within 100 ms; sizes in view are unchanged by off-screen skipping",
+        "pass": true,
+        "detail": "worst 43 ms (MCP round trip included)"
+      },
+      {
+        "name": "The layers panel with every layer expanded scrolls with frames under 20 ms",
+        "pass": true,
+        "detail": "p95 frame 9.3 ms, worst 57.8 ms; 41 row elements rendered"
+      }
+    ]
   }
 }

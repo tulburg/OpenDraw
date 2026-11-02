@@ -11,6 +11,21 @@ export function parseFamilies(value: string): string[] {
 }
 
 /** Every family named in a `fontFamily` anywhere in a value: nodes, text spans, tokens. */
+const familiesByArtboard = new WeakMap<object, string[]>()
+
+/** `familiesIn` for the artboards of `pages`, kept per artboard so an edit rescans only what it changed (S-21). */
+export function pageFamilies(pages: { nodes: object[] }[]): Set<string> {
+  const into = new Set<string>()
+  for (const page of pages) {
+    for (const artboard of page.nodes) {
+      let own = familiesByArtboard.get(artboard)
+      if (!own) familiesByArtboard.set(artboard, (own = [...familiesIn(artboard)]))
+      for (const family of own) into.add(family)
+    }
+  }
+  return into
+}
+
 export function familiesIn(value: unknown, into = new Set<string>()): Set<string> {
   if (Array.isArray(value)) for (const v of value) familiesIn(v, into)
   else if (value && typeof value === 'object') {

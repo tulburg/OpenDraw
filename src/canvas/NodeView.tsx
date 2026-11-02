@@ -1,16 +1,19 @@
-import { createContext, type CSSProperties, useContext, useMemo } from 'react'
+import { createContext, type CSSProperties, memo, useContext, useMemo } from 'react'
 
 import type { CSSStyle, DesignNode } from '../../shared/document'
 import { safeImageSrc, sanitizeSvg } from '../document/media'
-import { PreviewContext } from './preview'
+import { usePreview } from './preview'
 import { EditingContext, TextEditor } from './TextEditor'
 
 /** The file's design tokens as custom properties, set on every artboard (S-14 Req 2). */
 export const TokensContext = createContext<CSSStyle>({})
 
-/** Renders a node as a real DOM element with its stored CSS. */
-export function NodeView({ node }: { node: DesignNode }) {
-  const preview = useContext(PreviewContext)[node.id]
+/**
+ * Renders a node as a real DOM element with its stored CSS. Memoized: edits replace only the nodes on
+ * the changed path, so panning and zooming re-render nothing below the world (S-21).
+ */
+export const NodeView = memo(function NodeView({ node }: { node: DesignNode }) {
+  const preview = usePreview(node.id)
   const editing = useContext(EditingContext)
   const tokens = useContext(TokensContext)
   const style: CSSProperties = { boxSizing: 'border-box', ...(node.style as CSSProperties), ...(preview as CSSProperties) }
@@ -30,7 +33,7 @@ export function NodeView({ node }: { node: DesignNode }) {
       ))}
     </div>
   )
-}
+})
 
 /** Formatted runs of a text node. Line breaks are newlines, laid out by the node's white-space. */
 export function Spans({ node }: { node: DesignNode }) {

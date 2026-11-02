@@ -138,7 +138,9 @@ async function createWindow() {
     webPreferences: {
       preload: path.join(here, 'preload.cjs'),
       contextIsolation: true,
-      sandbox: true
+      sandbox: true,
+      // Tests measure frame times, which a window behind others would throttle.
+      backgroundThrottling: !process.env.OPENDRAW_TEST
     }
   })
   // Keep the window title fixed; the file name is shown in the top bar.

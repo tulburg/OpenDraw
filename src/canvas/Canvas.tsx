@@ -5,7 +5,7 @@ import { type DocumentStore, setNodeLocator } from '../document/store'
 import { findNode } from '../document/tree'
 import { CLIPBOARD_TYPE, copySelection, deleteSelection, duplicateSelection, paste, selectAll } from './commands'
 import { NodeView } from './NodeView'
-import { type Preview, PreviewContext } from './preview'
+import { type Preview, PreviewContext, PreviewStore } from './preview'
 import { type Editing, EditingContext } from './TextEditor'
 import {
   CORNER_PROPERTIES,
@@ -26,6 +26,7 @@ import {
 } from './handles'
 import { type Guide, guidesForBox, snapMove, snapValue, type SpacingMarker, unionRect } from './snap'
 import { CommentLayer, layerOrigin, type Pin } from './Comments'
+import { idsIn, measuringAll, offscreenArtboards } from './offscreen'
 import { LayerMenu } from '../panels/LayerMenu'
 import { Toolbar } from './Toolbar'
 import {
@@ -192,6 +193,7 @@ export function Canvas({
   }, [selection, editingId])
   const [insertLine, setInsertLine] = useState<Rect | null>(null)
   const [commentDraft, setCommentDraft] = useState<Pin | null>(null)
+  const [canvasSize, setCanvasSize] = useState<{ width: number; height: number } | null>(null)
   const [layerMenu, setLayerMenu] = useState<{ x: number; y: number } | null>(null)
   const closeLayerMenu = useCallback(() => setLayerMenu(null), [])
   const [tool, setToolState] = useState<Tool>('select')
@@ -206,12 +208,22 @@ export function Canvas({
   const pendingImage = useRef<{ placement: Placement; containerSize: { width: number; height: number } | null } | null>(null)
   // Handlers registered once read the latest values from refs.
   const viewportRef = useRef(viewport)
+  const worldRef = useRef<HTMLDivElement>(null)
+  // While the viewport moves, the world is its own compositor layer, so a pan or zoom frame only moves
+  // pixels (S-21). It settles back a moment after the last change, sharp again.
+  useLayoutEffect(() => {
+    const world = worldRef.current
+    if (!world) return
+    world.setAttribute('data-moving', '')
+    const settle = setTimeout(() => world.removeAttribute('data-moving'), 160)
+    return () => clearTimeout(settle)
+  }, [viewport])
   viewportRef.current = viewport
   const nodesRef = useRef(nodes)
   nodesRef.current = nodes
   // Deleting a layer leaves its comment threads where it was, measured here (S-16 Req 5).
   useEffect(() => {
-    setNodeLocator((id) => (ref.current ? layerOrigin(ref.current, id, viewportRef.current) : null))
+    setNodeLocator((id) => (ref.current ? measuringAll(() => layerOrigin(ref.current!, id, viewportRef.current)) : null))
     return () => setNodeLocator(null)
   }, [])
   const nudge = useRef<{ origins: Offsets; dx: number; dy: number; timer?: ReturnType<typeof setTimeout> } | null>(null)
@@ -256,7 +268,9 @@ export function Canvas({
   useEffect(() => {
     const el = ref.current!
     const observer = new ResizeObserver(([entry]) => {
-      onResize({ width: entry.contentRect.width, height: entry.contentRect.height })
+      const next = { width: entry.contentRect.width, height: entry.contentRect.height }
+      setCanvasSize(next)
+      onResize(next)
     })
     observer.observe(el)
     return () => observer.disconnect()
@@ -896,11 +910,20 @@ export function Canvas({
     setWorkingRects(rects(workingIds))
   }, [selection, hoveredId, workingIds, nodes, viewport, preview, externalPreview])
 
-  const drawn = useMemo(() => {
-    const merged: Preview = { ...externalPreview }
-    for (const [id, style] of Object.entries(preview)) merged[id] = { ...merged[id], ...style }
-    return merged
+  // Artboards holding the selection or being edited stay rendered, so their outlines and handles measure.
+  const keepRendered = useMemo(() => {
+    const ids = [...selection, ...(editingId ? [editingId] : []), ...Object.keys(preview), ...Object.keys(externalPreview)]
+    return new Set(nodes.filter((a) => ids.some((id) => idsIn(a).has(id))).map((a) => a.id))
+  }, [nodes, selection, editingId, preview, externalPreview])
+  const offscreen = useMemo(() => offscreenArtboards(nodes, viewport, canvasSize, keepRendered), [nodes, viewport, canvasSize, keepRendered])
+
+  const merged = useMemo(() => {
+    const out: Preview = { ...externalPreview }
+    for (const [id, style] of Object.entries(preview)) out[id] = { ...out[id], ...style }
+    return out
   }, [preview, externalPreview])
+  const [drawn] = useState(() => new PreviewStore())
+  useLayoutEffect(() => drawn.set({ ...merged }), [drawn, merged])
 
   const single = selection.length === 1 && selectedFrames.length === 1 ? selectedFrames[0] : null
   const showHandles = !!single && gesture?.kind !== 'reorder' && !editingId
@@ -941,6 +964,7 @@ export function Canvas({
       }}
     >
       <div
+        ref={worldRef}
         className="canvas-world"
         data-x={viewport.x}
         data-y={viewport.y}
@@ -950,7 +974,7 @@ export function Canvas({
         <PreviewContext.Provider value={drawn}>
           <EditingContext.Provider value={editing}>
             {nodes.map((node) => (
-              <div key={node.id} data-select-id={node.id}>
+              <div key={node.id} data-select-id={node.id} data-offscreen={offscreen.has(node.id) || undefined}>
                 <NodeView node={node} />
               </div>
             ))}
@@ -959,7 +983,7 @@ export function Canvas({
       </div>
       <div className="canvas-overlay">
         {nodes.map((node) => {
-          const rect = toScreen(nodeRect({ ...node, style: { ...node.style, ...drawn[node.id] } }), viewport)
+          const rect = toScreen(nodeRect({ ...node, style: { ...node.style, ...merged[node.id] } }), viewport)
           return (
             <div
               key={node.id}

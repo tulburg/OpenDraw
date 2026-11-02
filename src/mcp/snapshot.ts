@@ -1,5 +1,6 @@
 // Builds what the MCP read tools work from: the store's state plus layout measured on the live canvas.
 import type { Layout, Snapshot } from '../../shared/mcp/snapshot'
+import { measuringAll } from '../canvas/offscreen'
 import type { DocumentStore } from '../document/store'
 
 const round = (n: number) => Math.round(n * 100) / 100
@@ -31,5 +32,5 @@ function measureCanvas(): Record<string, Layout> {
 
 export function buildSnapshot(store: DocumentStore, filePath: string): Snapshot {
   const { document, pageId, selection } = store.getState()
-  return { filePath, document, pageId, selection, layout: measureCanvas() }
+  return { filePath, document, pageId, selection, layout: measuringAll(measureCanvas) }
 }
