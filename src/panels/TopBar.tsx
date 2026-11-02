@@ -1,4 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+
+import { setUserName, useUserName } from '../comments/user'
 
 interface TopBarProps {
   tabs: { id: string; name: string }[]
@@ -68,9 +70,63 @@ export function TopBar({ tabs, activeId, home, zoom, onHome, onSelect, onClose, 
           </div>
         ))}
       </div>
+      <UserButton />
       <div className="zoom-readout" data-testid="zoom-readout">
         {zoom === null ? '' : `${Math.round(zoom * 100)}%`}
       </div>
     </header>
+  )
+}
+
+/** The local user's name on comments (S-16 Req 2), changed in a small popover. */
+function UserButton() {
+  const name = useUserName()
+  const [open, setOpen] = useState(false)
+  const [draft, setDraft] = useState('')
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const down = (event: PointerEvent) => !ref.current?.contains(event.target as Node) && setOpen(false)
+    window.addEventListener('pointerdown', down, true)
+    return () => window.removeEventListener('pointerdown', down, true)
+  }, [open])
+  const save = () => {
+    if (draft.trim()) setUserName(draft)
+    setOpen(false)
+  }
+  return (
+    <div className="user-menu" ref={ref}>
+      <button
+        type="button"
+        className="user-button"
+        data-testid="user-button"
+        title={name ? `Commenting as ${name}` : 'Set your name'}
+        onClick={() => {
+          setDraft(name ?? '')
+          setOpen(!open)
+        }}
+      >
+        {name?.trim().charAt(0).toUpperCase() || '?'}
+      </button>
+      {open && (
+        <div className="user-popover" data-testid="user-popover">
+          <label htmlFor="user-name">Your name on comments</label>
+          <input
+            id="user-name"
+            data-testid="user-name"
+            autoFocus
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') save()
+              if (event.key === 'Escape') setOpen(false)
+            }}
+          />
+          <button type="button" className="export-button" data-testid="user-save" onClick={save}>
+            Save
+          </button>
+        </div>
+      )}
+    </div>
   )
 }

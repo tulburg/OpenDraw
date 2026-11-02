@@ -18,6 +18,8 @@ interface AppState {
   window?: { x: number; y: number; width: number; height: number }
   /** The folder the user picked for exports (S-15). */
   exportDir?: string
+  /** The local user's display name on comments (S-16). */
+  userName?: string
 }
 
 export function workspaceDir(): string {

@@ -82,6 +82,36 @@ export const readTools = {
       types: z.array(tokenType).optional()
     })
   },
+  list_comment_threads: {
+    description:
+      'List visible comment threads in the open file as compact summaries. A comment thread is a conversation pinned to a node (or a canvas point): a first message plus replies, each with its own author, and an "open" or "resolved" status. Lists only open threads by default. Use this first to find relevant discussion, then call get_comment_thread for full replies. When you fully address a thread\'s feedback, mark it done with set_comment_thread_status. User ID filters accept "current-user" for the local user. Deleted threads and messages are never returned.',
+    inputSchema: z.object({
+      fileId: requiredFileId,
+      pageId: z.string().optional().describe('Only threads on this page. Omit to include all pages.'),
+      currentPageOnly: z.boolean().optional().describe('Only threads on the page the user is viewing. Ignored when pageId is given.'),
+      nodeId: z.string().optional().describe('Only threads pinned to this node.'),
+      status: z.enum(['open', 'resolved', 'all']).optional().describe('Defaults to "open": unresolved threads, the ones still needing action.'),
+      participantUserId: z.string().optional().describe('Only threads where this user wrote a visible message. "current-user" for the local user; otherwise an authorUserId from earlier results.'),
+      threadAuthorUserId: z.string().optional().describe('Only threads started by this user. "current-user" for the local user.'),
+      search: z.string().optional().describe('Case-insensitive search over author names and message text.'),
+      searchScope: z.enum(['first-message', 'all-messages']).optional().describe('Defaults to "all-messages".'),
+      sortField: z.enum(['page', 'createdAt', 'updatedAt']).optional().describe('Defaults to "page", matching the Comments panel.'),
+      sortDirection: z.enum(['asc', 'desc']).optional().describe('Defaults to "asc".'),
+      limit: z.number().int().min(1).max(200).optional().describe('Defaults to 50.'),
+      offset: z.number().int().min(0).optional().describe('Defaults to 0.'),
+      previewLength: z.number().int().min(20).max(1000).optional().describe('Maximum characters of each first-message preview. Defaults to 240.')
+    })
+  },
+  get_comment_thread: {
+    description:
+      'Full details for one visible comment thread: status, every message with author and time, reactions, page context and pinned node context. Works for any status. Deleted threads and messages are never returned.',
+    inputSchema: z.object({ fileId: requiredFileId, commentThreadId: z.string().describe('The ID of the comment thread to read.') })
+  },
+  list_comment_thread_authors: {
+    description:
+      'Lists every user who started a comment thread or wrote a visible message, with user ID, display name, thread and message counts and last activity time. Use it to turn a name into a userId for list_comment_threads filters.',
+    inputSchema: z.object({ fileId: requiredFileId, pageId: z.string().optional().describe('Only count activity on this page.') })
+  },
   get_jsx: {
     description:
       'The node and its descendants as JSX, with inline styles (default) or Tailwind classes. Node IDs are included as id attributes unless includeNodeIds is false; pass false to get clean code for a codebase.',
@@ -257,6 +287,16 @@ Rules:
       tokens: z
         .array(z.object({ type: tokenType, name: tokenName, value: tokenValue, description: z.string().optional().describe('What the token is for. Max 1024 characters.') }))
         .min(1)
+    }),
+    annotations: { readOnlyHint: false, destructiveHint: false }
+  },
+  set_comment_thread_status: {
+    description:
+      'Sets one comment thread\'s status to "resolved" or "open". Resolve a thread once its feedback is fully addressed in the design; reopen it if more work is needed. One undo step for the user.',
+    inputSchema: z.object({
+      fileId: requiredFileId,
+      commentThreadId: z.string().describe('The ID of the comment thread to update.'),
+      status: z.enum(['open', 'resolved'])
     }),
     annotations: { readOnlyHint: false, destructiveHint: false }
   },

@@ -48,6 +48,7 @@ export function Editor({ opened, store, working, topBar, onViewState }: EditorPr
   const pageId = useStore(store, (s) => s.pageId)
   const selection = useStore(store, (s) => s.selection)
   const [viewport, setViewport] = useState<Viewport | null>(opened.viewport)
+  const [openThread, setOpenThread] = useState<string | null>(null)
   const canvasSize = useRef<{ width: number; height: number } | null>(null)
   const [panelPreview, setPanelPreview] = useState<Record<string, CSSStyle>>({})
   const onPanelPreview = useCallback((preview: Record<string, CSSStyle> | null) => setPanelPreview(preview ?? {}), [])
@@ -137,7 +138,7 @@ export function Editor({ opened, store, working, topBar, onViewState }: EditorPr
   return (
     <div className="app" data-platform={window.opendraw.platform}>
       {topBar(viewport?.zoom ?? null)}
-      <LayersPanel store={store} nodes={nodes} selection={selection} onSelect={selectLayer} />
+      <LayersPanel store={store} nodes={nodes} selection={selection} onSelect={selectLayer} openThread={openThread} onOpenThread={setOpenThread} />
       {/* Nodes stay hidden until the viewport is known, so a new file never flashes unfitted. */}
       <TokensContext.Provider value={tokens}>
       <Canvas
@@ -149,6 +150,8 @@ export function Editor({ opened, store, working, topBar, onViewState }: EditorPr
         externalPreview={panelPreview}
         onViewportChange={setViewport}
         onResize={onResize}
+        openThread={openThread}
+        onOpenThread={setOpenThread}
       />
       </TokensContext.Provider>
       <StylesPanel store={store} nodes={nodes} selection={selection} measure={measureNode} onPreview={onPanelPreview} />

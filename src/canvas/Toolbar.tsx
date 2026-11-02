@@ -17,7 +17,8 @@ const ICONS: Record<Tool, ReactNode> = {
       <path d="M4 14l4-4 3 3 2-2 3 3" />
       <circle cx="12.5" cy="8" r="1.2" />
     </>
-  )
+  ),
+  comment: <path d="M4 15.5V6a2 2 0 012-2h8a2 2 0 012 2v6a2 2 0 01-2 2H7.5z" />
 }
 
 export function Toolbar({ tool, onSelect }: { tool: Tool; onSelect: (tool: Tool) => void }) {

@@ -4,7 +4,7 @@ import { sanitizeSvg } from '../document/media'
 import type { DocumentStore } from '../document/store'
 import { findNode } from '../document/tree'
 
-export type Tool = 'select' | 'hand' | 'artboard' | 'frame' | 'text' | 'image'
+export type Tool = 'select' | 'hand' | 'artboard' | 'frame' | 'text' | 'image' | 'comment'
 
 export const TOOLS: { tool: Tool; name: string; key: string }[] = [
   { tool: 'select', name: 'Select', key: 'V' },
@@ -12,7 +12,8 @@ export const TOOLS: { tool: Tool; name: string; key: string }[] = [
   { tool: 'artboard', name: 'Artboard', key: 'A' },
   { tool: 'frame', name: 'Frame', key: 'F' },
   { tool: 'text', name: 'Text', key: 'T' },
-  { tool: 'image', name: 'Image', key: 'I' }
+  { tool: 'image', name: 'Image', key: 'I' },
+  { tool: 'comment', name: 'Comment', key: 'C' }
 ]
 
 export const TOOL_BY_KEY: Record<string, Tool> = Object.fromEntries(TOOLS.map((t) => [t.key.toLowerCase(), t.tool]))

@@ -42,6 +42,8 @@ const api = {
   /** A file's saved document, for thumbnails in the file browser. */
   readFile: (id: string): Promise<DesignDocument> => ipcRenderer.invoke('workspace:read-file', id),
   /** The export folder the user picked, or null before they pick one (S-15). */
+  userName: (): Promise<string | null> => ipcRenderer.invoke('user:name'),
+  setUserName: (name: string): Promise<void> => ipcRenderer.invoke('user:set-name', name),
   exportDir: (): Promise<string | null> => ipcRenderer.invoke('export:dir'),
   chooseExportDir: (): Promise<string | null> => ipcRenderer.invoke('export:choose-dir'),
   runExport: (items: ExportItem[]): Promise<{ files?: ExportedFile[]; cancelled?: boolean }> => ipcRenderer.invoke('export:run', items),

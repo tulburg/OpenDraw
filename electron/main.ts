@@ -194,6 +194,12 @@ async function chooseExportDir(win: BrowserWindow | null): Promise<string | null
   })
   return dir
 }
+ipcMain.handle('user:name', async () => (await readState()).userName ?? null)
+ipcMain.handle('user:set-name', (_event, name: string) =>
+  updateState((s) => {
+    s.userName = name
+  })
+)
 ipcMain.handle('export:dir', async () => ((await readState()).exportDir ? exportDir() : null))
 ipcMain.handle('export:choose-dir', (event) => chooseExportDir(BrowserWindow.fromWebContents(event.sender)))
 ipcMain.handle('export:run', async (event, items: ExportItem[]) => {

@@ -2,7 +2,7 @@
 // undo step, and listeners re-render and autosave from the committed state.
 import { useSyncExternalStore } from 'react'
 
-import { type DesignDocument, type DesignNode, type ExportSetting, newId, type Page, type PageIcon, type TextSpan, TOKEN_TYPES } from '../../shared/document'
+import { type CommentThread, type DesignDocument, type DesignNode, type ExportSetting, newId, type Page, type PageIcon, type TextSpan, TOKEN_TYPES } from '../../shared/document'
 import { arrangePages, nextPageName, PageError } from '../../shared/pages'
 import { type CreateEntry, createTokens, type SetEntry, setTokens, type TokenResult } from '../../shared/tokens'
 import { clearFromSpans } from './richtext'
@@ -13,6 +13,17 @@ import { EditError } from './tree'
 export { EditError }
 
 const MAX_UNDO = 200
+
+/** A layer's top-left corner in world units, measured by the canvas showing it (S-16 Req 5). */
+let nodeLocator: ((id: string) => { x: number; y: number } | null) | null = null
+export function setNodeLocator(locator: typeof nodeLocator) {
+  nodeLocator = locator
+}
+
+export interface Author {
+  id: string
+  name: string
+}
 
 export interface StoreState {
   document: DesignDocument
@@ -125,7 +136,39 @@ export class Transaction {
   }
 
   deleteNodes(ids: string[]) {
+    this.unpinThreads(ids)
     for (const id of ids) this.update(id, (page) => tree.deleteNodes(page, [id]))
+  }
+
+  /** Threads pinned to these layers (or inside them) stay where the layer was, as canvas points. */
+  private unpinThreads(ids: string[]) {
+    const threads = this.document.comments
+    if (!threads?.some((t) => t.nodeId)) return
+    const doomed = new Set<string>()
+    const collect = (node: DesignNode) => {
+      doomed.add(node.id)
+      node.children.forEach(collect)
+    }
+    for (const page of this.document.pages) for (const id of ids) {
+      const node = tree.findNode(page.nodes, id)
+      if (node) collect(node)
+    }
+    const origin = (id: string) => {
+      const measured = nodeLocator?.(id)
+      if (measured) return measured
+      const page = this.document.pages.find((p) => tree.findNode(p.nodes, id))
+      const artboard = page?.nodes.find((a) => a.id === id || tree.findNode(a.children, id))
+      return artboard ? { x: Number.parseFloat(String(artboard.style.left ?? 0)) || 0, y: Number.parseFloat(String(artboard.style.top ?? 0)) || 0 } : { x: 0, y: 0 }
+    }
+    let changed = false
+    const comments = threads.map((t) => {
+      if (!t.nodeId || !doomed.has(t.nodeId)) return t
+      changed = true
+      const at = origin(t.nodeId)
+      const { nodeId: _, ...rest } = t
+      return { ...rest, x: Math.round(at.x + t.x), y: Math.round(at.y + t.y) }
+    })
+    if (changed) this.document = { ...this.document, comments }
   }
 
   /** Where a node sits: its page, its parent (a node ID, or the page ID for artboards) and its index. */
@@ -276,6 +319,81 @@ export class Transaction {
     const { document, results } = setTokens(this.document, entries)
     if (results.some((r) => r.result !== 'error')) this.document = document
     return results
+  }
+
+  private updateThread(id: string, change: (thread: CommentThread) => CommentThread) {
+    const threads = this.document.comments ?? []
+    const index = threads.findIndex((t) => t.id === id && !t.deleted)
+    if (index === -1) throw new EditError(`No comment thread with ID ${id}`)
+    const comments = [...threads]
+    comments[index] = change(threads[index])
+    this.document = { ...this.document, comments }
+  }
+
+  /** Starts a thread (S-16): pinned to a layer at an offset from its corner, or to a canvas point. */
+  addThread(args: { pageId: string; nodeId?: string; x: number; y: number; text: string; author: Author }): string {
+    const now = new Date().toISOString()
+    const thread: CommentThread = {
+      id: newId(),
+      pageId: args.pageId,
+      ...(args.nodeId ? { nodeId: args.nodeId } : {}),
+      x: Math.round(args.x),
+      y: Math.round(args.y),
+      status: 'open',
+      createdAt: now,
+      updatedAt: now,
+      messages: [{ id: newId(), authorId: args.author.id, authorName: args.author.name, text: args.text, createdAt: now }]
+    }
+    this.document = { ...this.document, comments: [...(this.document.comments ?? []), thread] }
+    return thread.id
+  }
+
+  reply(threadId: string, text: string, author: Author): string {
+    const now = new Date().toISOString()
+    const id = newId()
+    this.updateThread(threadId, (t) => ({
+      ...t,
+      updatedAt: now,
+      messages: [...t.messages, { id, authorId: author.id, authorName: author.name, text, createdAt: now }]
+    }))
+    return id
+  }
+
+  setThreadStatus(threadId: string, status: CommentThread['status']) {
+    this.updateThread(threadId, (t) => (t.status === status ? t : { ...t, status, updatedAt: new Date().toISOString() }))
+  }
+
+  /** Moves a pin: onto a layer (an offset from its corner) or to a canvas point. */
+  movePin(threadId: string, pin: { nodeId?: string; x: number; y: number }) {
+    this.updateThread(threadId, ({ nodeId: _, ...t }) => ({ ...t, ...(pin.nodeId ? { nodeId: pin.nodeId } : {}), x: Math.round(pin.x), y: Math.round(pin.y) }))
+  }
+
+  /** Toggles a user's reaction on a message. */
+  react(threadId: string, messageId: string, emoji: string, userId: string) {
+    this.updateThread(threadId, (t) => ({
+      ...t,
+      messages: t.messages.map((m) => {
+        if (m.id !== messageId) return m
+        const reactions = { ...m.reactions }
+        const users = reactions[emoji] ?? []
+        reactions[emoji] = users.includes(userId) ? users.filter((u) => u !== userId) : [...users, userId]
+        if (reactions[emoji].length === 0) delete reactions[emoji]
+        return { ...m, reactions }
+      })
+    }))
+  }
+
+  /** Deletes are soft: the record stays in the file but no view or tool shows it (S-16 Req 5). */
+  deleteThread(threadId: string) {
+    this.updateThread(threadId, (t) => ({ ...t, deleted: true, updatedAt: new Date().toISOString() }))
+  }
+
+  deleteMessage(threadId: string, messageId: string) {
+    this.updateThread(threadId, (t) => {
+      const messages = t.messages.map((m) => (m.id === messageId ? { ...m, deleted: true } : m))
+      // Deleting the first message deletes the thread.
+      return { ...t, messages, deleted: t.messages[0].id === messageId || t.deleted, updatedAt: new Date().toISOString() }
+    })
   }
 
   /** Sets the selection that this step leaves behind (and that redo restores). */

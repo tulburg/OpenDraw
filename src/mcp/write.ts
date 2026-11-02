@@ -253,6 +253,12 @@ export function runWriteTool(ctx: WriteContext, tool: WriteToolName, args: any):
       return store.transact('Agent: create tokens', (tx) => tx.createTokens(args.tokens))
     }
 
+    case 'set_comment_thread_status': {
+      store.transact(`Agent: ${args.status === 'resolved' ? 'resolve' : 'reopen'} comment`, (tx) => tx.setThreadStatus(args.commentThreadId, args.status))
+      const thread = store.getState().document.comments?.find((t) => t.id === args.commentThreadId)!
+      return { commentThreadId: thread.id, status: thread.status, updatedAt: thread.updatedAt }
+    }
+
     case 'set_tokens': {
       return store.transact('Agent: set tokens', (tx) => tx.setTokens(args.tokens))
     }

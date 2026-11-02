@@ -620,5 +620,46 @@
         "detail": "card jpg 512w, png 2x"
       }
     ]
+  },
+  "S-16": {
+    "at": "2026-11-02T04:15:08.934Z",
+    "running": false,
+    "results": [
+      {
+        "name": "The Comment tool pins a thread to a layer; replying and resolving work, and it survives a restart",
+        "pass": true,
+        "detail": "2 messages, resolved, pinned to Card"
+      },
+      {
+        "name": "list_comment_threads: open by default; status, nodeId, search, currentPageOnly, limit and offset filter",
+        "pass": true,
+        "detail": "open 4, all 5, current page 3"
+      },
+      {
+        "name": "get_comment_thread returns every message; set_comment_thread_status resolving removes the pin, and undo brings it back",
+        "pass": true,
+        "detail": "2 messages; undo reopened it"
+      },
+      {
+        "name": "participantUserId current-user matches threads the local user wrote in; list_comment_thread_authors counts them",
+        "pass": true,
+        "detail": "Dana 2 threads / 4 messages, Riley 3 / 3"
+      },
+      {
+        "name": "The Comments panel lists threads by page, filters and searches; clicking one selects its layer and opens it",
+        "pass": true,
+        "detail": "4 open, 5 all, 1 resolved"
+      },
+      {
+        "name": "The name is asked once and changes in the top bar popover; new replies use it",
+        "pass": true,
+        "detail": "last reply by Dana Q"
+      },
+      {
+        "name": "Moving a layer moves its pins; deleting it keeps the thread at the old position",
+        "pass": true,
+        "detail": "pin followed by 60.0, 40.0; kept at 189, 159 after delete"
+      }
+    ]
   }
 }

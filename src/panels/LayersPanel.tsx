@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 
 import type { DesignNode } from '../../shared/document'
 import type { DocumentStore } from '../document/store'
+import { CommentsPanel } from './CommentsPanel'
 import { PagesList } from './PagesList'
 import { TokensPanel } from './TokensPanel'
 
@@ -52,10 +53,16 @@ function LayerRows({ nodes, depth, selection, onSelect }: LayersPanelProps & { d
   ))
 }
 
-export function LayersPanel({ store, nodes, selection, onSelect }: LayersPanelProps & { store: DocumentStore }) {
+interface CommentProps {
+  store: DocumentStore
+  openThread: string | null
+  onOpenThread: (id: string | null) => void
+}
+
+export function LayersPanel({ store, nodes, selection, onSelect, openThread, onOpenThread }: LayersPanelProps & CommentProps) {
   // Keep the first selected layer in view when the selection changes on the canvas (S-6 Req 7).
   const ref = useRef<HTMLElement>(null)
-  const [tab, setTab] = useState<'layers' | 'tokens'>('layers')
+  const [tab, setTab] = useState<'layers' | 'tokens' | 'comments'>('layers')
   useEffect(() => {
     if (!selection[0]) return
     ref.current?.querySelector(`[data-layer-id="${CSS.escape(selection[0])}"]`)?.scrollIntoView({ block: 'nearest' })
@@ -70,8 +77,13 @@ export function LayersPanel({ store, nodes, selection, onSelect }: LayersPanelPr
         <button type="button" role="tab" aria-selected={tab === 'tokens'} data-testid="tab-tokens" onClick={() => setTab('tokens')}>
           Tokens
         </button>
+        <button type="button" role="tab" aria-selected={tab === 'comments'} data-testid="tab-comments" onClick={() => setTab('comments')}>
+          Comments
+        </button>
       </div>
-      {tab === 'tokens' ? (
+      {tab === 'comments' ? (
+        <CommentsPanel store={store} openThread={openThread} onOpenThread={onOpenThread} />
+      ) : tab === 'tokens' ? (
         <TokensPanel store={store} />
       ) : nodes.length === 0 ? (
         <div className="panel-empty">No layers on this page</div>

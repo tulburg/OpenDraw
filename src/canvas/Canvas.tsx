@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
 import type { CSSStyle, DesignNode, Viewport } from '../../shared/document'
-import type { DocumentStore } from '../document/store'
+import { type DocumentStore, setNodeLocator } from '../document/store'
 import { findNode } from '../document/tree'
 import { CLIPBOARD_TYPE, copySelection, deleteSelection, duplicateSelection, paste, selectAll } from './commands'
 import { NodeView } from './NodeView'
@@ -25,6 +25,7 @@ import {
   type Side
 } from './handles'
 import { type Guide, guidesForBox, snapMove, snapValue, type SpacingMarker, unionRect } from './snap'
+import { CommentLayer, layerOrigin, type Pin } from './Comments'
 import { Toolbar } from './Toolbar'
 import {
   containerOn,
@@ -51,6 +52,9 @@ interface CanvasProps {
   externalPreview: Preview
   onViewportChange: (viewport: Viewport) => void
   onResize: (size: { width: number; height: number }) => void
+  /** The comment thread whose popover is open (S-16), shared with the Comments panel. */
+  openThread: string | null
+  onOpenThread: (id: string | null) => void
 }
 
 
@@ -154,7 +158,9 @@ export function Canvas({
   workingIds,
   externalPreview,
   onViewportChange,
-  onResize
+  onResize,
+  openThread,
+  onOpenThread
 }: CanvasProps) {
   const ref = useRef<HTMLDivElement>(null)
   const [spaceHeld, setSpaceHeld] = useState(false)
@@ -184,6 +190,7 @@ export function Canvas({
     if (editingId && !(selection.length === 1 && selection[0] === editingId)) setEditing(null)
   }, [selection, editingId])
   const [insertLine, setInsertLine] = useState<Rect | null>(null)
+  const [commentDraft, setCommentDraft] = useState<Pin | null>(null)
   const [tool, setToolState] = useState<Tool>('select')
   const toolRef = useRef<Tool>('select')
   const setTool = useCallback((next: Tool) => {
@@ -199,6 +206,11 @@ export function Canvas({
   viewportRef.current = viewport
   const nodesRef = useRef(nodes)
   nodesRef.current = nodes
+  // Deleting a layer leaves its comment threads where it was, measured here (S-16 Req 5).
+  useEffect(() => {
+    setNodeLocator((id) => (ref.current ? layerOrigin(ref.current, id, viewportRef.current) : null))
+    return () => setNodeLocator(null)
+  }, [])
   const nudge = useRef<{ origins: Offsets; dx: number; dy: number; timer?: ReturnType<typeof setTimeout> } | null>(null)
 
   const parentOf = useCallback((id: string) => parentIdOf(ref.current!, id), [])
@@ -474,6 +486,18 @@ export function Canvas({
     if (event.button !== 0) return
     ref.current!.setPointerCapture(event.pointerId)
     const target = event.target as HTMLElement
+
+    if (tool === 'comment') {
+      // A click on a layer pins the thread to it; on empty canvas, to that point.
+      const path = pathAt(target)
+      const nodeId = path[path.length - 1]
+      const p = canvasPoint(event)
+      const world = { x: (p.x - viewport.x) / viewport.zoom, y: (p.y - viewport.y) / viewport.zoom }
+      const origin = nodeId ? layerOrigin(ref.current!, nodeId, viewport) : null
+      onOpenThread(null)
+      setCommentDraft(origin ? { nodeId, x: world.x - origin.x, y: world.y - origin.y } : world)
+      return
+    }
 
     if (tool === 'artboard' || tool === 'frame' || tool === 'text' || tool === 'image') {
       const container = tool === 'artboard' ? null : containerOn(pathAt(target), nodes)
@@ -1018,6 +1042,16 @@ export function Canvas({
             </div>
           </>
         )}
+        <CommentLayer
+          store={store}
+          canvas={ref}
+          viewport={viewport}
+          layoutKey={drawn}
+          openThread={openThread}
+          onOpenThread={onOpenThread}
+          draft={commentDraft}
+          onDraft={setCommentDraft}
+        />
         {gesture?.kind === 'marquee' && gesture.active && (
           <div
             className="marquee"

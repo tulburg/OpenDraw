@@ -109,6 +109,37 @@ export interface DesignDocument {
   dividers?: PageDivider[]
   /** Design tokens, in the order they were defined. */
   tokens?: Token[]
+  /** Comment threads (S-16), oldest first. */
+  comments?: CommentThread[]
+}
+
+/** The local user's ID: OpenDraw is single-user, and agents only read comments. */
+export const LOCAL_USER_ID = 'local-user'
+
+export interface CommentMessage {
+  id: string
+  authorId: string
+  authorName: string
+  text: string
+  createdAt: string
+  /** Emoji to the IDs of users who reacted with it. */
+  reactions?: Record<string, string[]>
+  deleted?: boolean
+}
+
+export interface CommentThread {
+  id: string
+  pageId: string
+  /** The layer it is pinned to, with the pin's offset from the layer's top-left corner. */
+  nodeId?: string
+  /** World position of the pin: the offset from the layer when pinned to one, else a canvas point. */
+  x: number
+  y: number
+  status: 'open' | 'resolved'
+  createdAt: string
+  updatedAt: string
+  messages: CommentMessage[]
+  deleted?: boolean
 }
 
 export interface Viewport {

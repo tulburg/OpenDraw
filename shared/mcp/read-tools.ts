@@ -1,3 +1,4 @@
+import { CommentError, getThread, type ListArgs, listAuthors, listThreads } from '../comments'
 // The read tools from S-4, as pure functions over a snapshot. Screenshots and computed styles need
 // a renderer and live in the main process.
 import type { DesignNode } from '../document'
@@ -126,6 +127,26 @@ export function getChildren(snapshot: Snapshot, args: { fileId: string; nodeId: 
     childCount: child.children.length,
     ...layoutOf(snapshot, child.id)
   }))
+}
+
+export function listCommentThreads(snapshot: Snapshot, args: ListArgs & { fileId?: string }) {
+  requireFile(snapshot, args.fileId)
+  return listThreads(snapshot.document, snapshot.pageId, args)
+}
+
+export function getCommentThread(snapshot: Snapshot, args: { fileId?: string; commentThreadId: string }) {
+  requireFile(snapshot, args.fileId)
+  try {
+    return getThread(snapshot.document, args.commentThreadId)
+  } catch (err) {
+    if (err instanceof CommentError) throw new ToolError(err.message)
+    throw err
+  }
+}
+
+export function listCommentThreadAuthors(snapshot: Snapshot, args: { fileId?: string; pageId?: string }) {
+  requireFile(snapshot, args.fileId)
+  return listAuthors(snapshot.document, args.pageId)
 }
 
 export function getTokens(snapshot: Snapshot, args: { fileId?: string; format?: 'json' | 'css' | 'tailwind'; namePattern?: string; types?: string[] }) {

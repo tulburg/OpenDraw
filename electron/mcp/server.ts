@@ -83,7 +83,10 @@ function buildServer({ getWindow, renderTarget }: ServerDeps): McpServer {
     get_children: read.getChildren,
     find_nodes: read.findNodes,
     get_jsx: read.getJSX,
-    get_tokens: read.getTokens
+    get_tokens: read.getTokens,
+    list_comment_threads: read.listCommentThreads,
+    get_comment_thread: read.getCommentThread,
+    list_comment_thread_authors: read.listCommentThreadAuthors
   } as const
 
   for (const [name, run] of Object.entries(pure)) {
