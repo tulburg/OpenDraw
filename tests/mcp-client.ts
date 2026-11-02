@@ -9,6 +9,8 @@ export class BridgeClient {
   private nextId = 1
   private buffer = ''
   private waiting = new Map<number, (message: any) => void>()
+  /** The server's initialize result: its info and instructions. */
+  initialized: any = null
 
   private constructor(private proc: Subprocess<'pipe', 'pipe', 'inherit'>) {
     void this.readLoop()
@@ -27,7 +29,7 @@ export class BridgeClient {
       env: { ...process.env, ...env }
     })
     const client = new BridgeClient(proc)
-    await client.request('initialize', {
+    client.initialized = await client.request('initialize', {
       protocolVersion: '2025-06-18',
       capabilities: {},
       clientInfo: { name: 'opendraw-tests', version: '0' }

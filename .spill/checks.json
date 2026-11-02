@@ -903,5 +903,26 @@
         "detail": "the field got \"42\"; no layer added"
       }
     ]
+  },
+  "S-27": {
+    "at": "2026-11-02T08:30:49.692Z",
+    "running": false,
+    "results": [
+      {
+        "name": "write_html with <x-opendraw-clone> and with <x-paper-clone> both insert a copy with new IDs",
+        "pass": true,
+        "detail": "x-opendraw-clone and x-paper-clone each inserted a copy with new IDs; a missing ID fails naming <x-opendraw-clone>"
+      },
+      {
+        "name": "get_guide returns the same text for opendraw-mcp-instructions and paper-mcp-instructions",
+        "pass": true,
+        "detail": "same 3125 chars for both topics; unknown-topic error lists only OpenDraw topics"
+      },
+      {
+        "name": "tools/list descriptions and the server instructions contain no Paper clone tag or guide name",
+        "pass": true,
+        "detail": "41 tool descriptions and the instructions use only the OpenDraw names"
+      }
+    ]
   }
 }

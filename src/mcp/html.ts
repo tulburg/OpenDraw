@@ -7,10 +7,10 @@ import { normalizeSpans, plainText, spanStyle } from '../document/richtext'
 import { applyStyleUpdate } from '../document/styles'
 import { cloneWithNewIds } from '../document/tree'
 
-/** An <x-paper-clone> that names a node that does not exist; the whole write fails (S-17 Req 3). */
+/** An <x-opendraw-clone> (or Paper's <x-paper-clone>) that names a node that does not exist; the whole write fails (S-17 Req 3). */
 export class CloneError extends Error {}
 
-/** Finds the node an <x-paper-clone node-id> copies. */
+/** Finds the node an <x-opendraw-clone node-id> copies. */
 export type CloneSource = (id: string) => DesignNode | null
 
 export interface ParsedHTML {
@@ -212,7 +212,7 @@ class Converter {
   clone(el: Element): DesignNode {
     const id = el.getAttribute('node-id')?.trim() ?? ''
     const source = id ? this.cloneSource?.(id) : null
-    if (!source) throw new CloneError(id ? `<x-paper-clone>: no node with ID ${id}` : '<x-paper-clone> needs a node-id attribute')
+    if (!source) throw new CloneError(id ? `<x-opendraw-clone>: no node with ID ${id}` : '<x-opendraw-clone> needs a node-id attribute')
     const copy = cloneWithNewIds(source)
     if (copy.type === 'artboard') {
       // An artboard copied into a layer becomes a frame; its canvas position no longer applies.
@@ -262,7 +262,8 @@ class Converter {
       this.dropped.push(`${describe(el)}: ${DROPPED_TAGS[tag]}`)
       return null
     }
-    if (tag === 'x-paper-clone') return this.clone(el)
+    // Paper's tag name is kept as an alias so Paper-trained agents still work (D-10).
+    if (tag === 'x-opendraw-clone' || tag === 'x-paper-clone') return this.clone(el)
 
     if (tag === 'img') {
       const style = this.sizeFromAttributes(el, this.style(el, 'image'))
@@ -334,8 +335,8 @@ class Converter {
 }
 
 export function parseHTML(html: string, cloneSource?: CloneSource): ParsedHTML {
-  // HTML has no self-closing custom elements; <x-paper-clone /> would swallow its siblings.
-  const source = html.replace(/<x-paper-clone\b([^>]*?)\/>/gi, '<x-paper-clone$1></x-paper-clone>')
+  // HTML has no self-closing custom elements; <x-opendraw-clone /> would swallow its siblings.
+  const source = html.replace(/<x-(opendraw|paper)-clone\b([^>]*?)\/>/gi, '<x-$1-clone$2></x-$1-clone>')
   const doc = new DOMParser().parseFromString(`<body>${source}</body>`, 'text/html')
   const converter = new Converter(cloneSource)
   const nodes = converter.children(doc.body)

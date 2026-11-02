@@ -87,14 +87,14 @@ try {
   })
 
   await check('get_guide returns the instructions; an unknown topic lists the topics', async () => {
-    const guide = await client.callRaw('get_guide', { topic: 'paper-mcp-instructions' })
+    const guide = await client.callRaw('get_guide', { topic: 'opendraw-mcp-instructions' })
     const body = guide.content[0].text as string
-    expect(!guide.isError && body.includes('get_basic_info') && body.includes('finish_working_on_nodes') && body.includes('x-paper-clone'), body.slice(0, 200))
+    expect(!guide.isError && body.includes('get_basic_info') && body.includes('finish_working_on_nodes') && body.includes('x-opendraw-clone'), body.slice(0, 200))
     const bar = await client.callRaw('get_guide', { topic: 'mobile-status-bar' })
     expect(!bar.isError && bar.content[0].text.includes('9:41'), 'status bar guide')
     const unknown = await client.callRaw('get_guide', { topic: 'figma-import' })
     const message = unknown.content[0].text as string
-    expect(unknown.isError && message.includes('paper-mcp-instructions') && message.includes('mobile-status-bar'), message)
+    expect(unknown.isError && message.includes('opendraw-mcp-instructions') && message.includes('mobile-status-bar'), message)
     return message
   })
 

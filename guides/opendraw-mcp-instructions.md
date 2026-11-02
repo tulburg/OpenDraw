@@ -18,7 +18,7 @@ OpenDraw is a local design app. A file has pages; a page holds artboards (top-le
 - `create_artboard` for a new screen, then `write_html` to fill it. Each `write_html` call should add about one visual group (a header, a card, a list), not a whole screen.
 - Layout is flexbox with `padding` and `gap`. Absolute positioning is for decoration. Margins, grid, inline display and tables are not supported.
 - Use `px` for font sizes and line heights, `em` for letter spacing.
-- Reuse layers: `<x-paper-clone node-id="...">` inside `write_html` inserts a copy of an existing node. `style` and `layer-name` on the tag override the copy's root style and name. `duplicate_nodes` with `update_styles` and `set_text_content` is often faster than writing new HTML.
+- Reuse layers: `<x-opendraw-clone node-id="...">` inside `write_html` inserts a copy of an existing node. `style` and `layer-name` on the tag override the copy's root style and name. `duplicate_nodes` with `update_styles` and `set_text_content` is often faster than writing new HTML.
 - Images: `src` and `background-image` take `https://`, `data:` and `paper-asset://<path>` URLs, where the path is relative to the workspace folder.
 - Repeated rows (lists, nav): give icons and trailing actions fixed-width slots with `flex-shrink: 0`; gap alone will not align columns across rows.
 - Artboard height is a starting point. When content clips, set `height: fit-content` with `update_styles` instead of guessing a height.
