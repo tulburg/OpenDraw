@@ -118,9 +118,10 @@ function Name({ item, onRename }: { item: ListedResource; onRename: (name: strin
 interface FileBrowserProps {
   openIds: string[]
   onOpen: (id: string) => void
+  onConnect: () => void
 }
 
-export function FileBrowser({ openIds, onOpen }: FileBrowserProps) {
+export function FileBrowser({ openIds, onOpen, onConnect }: FileBrowserProps) {
   const [folderId, setFolderId] = useState<string | undefined>(undefined)
   const [archive, setArchive] = useState(false)
   const [all, setAll] = useState<ListedResource[]>([])
@@ -172,6 +173,9 @@ export function FileBrowser({ openIds, onOpen }: FileBrowserProps) {
         </button>
         <button type="button" className={archive ? 'active' : ''} data-testid="browser-archive" onClick={() => setArchive(true)}>
           Archive
+        </button>
+        <button type="button" className="browser-connect" data-testid="browser-connect" onClick={onConnect}>
+          Connect an agent
         </button>
       </nav>
       <section className="browser-main">

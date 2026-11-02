@@ -1,5 +1,6 @@
 // Bundles the Electron main process (ESM), the preload script (CommonJS, required by sandboxed
 // preloads) and the opendraw-mcp stdio bridge (a plain Node command).
+const { version } = (await Bun.file('package.json').json()) as { version: string }
 const common = { target: 'node' as const, external: ['electron'], outdir: 'dist-electron' }
 
 const results = await Promise.all([
@@ -10,6 +11,7 @@ const results = await Promise.all([
     entrypoints: ['./bin/opendraw-mcp.ts'],
     format: 'esm',
     naming: 'opendraw-mcp.mjs',
+    define: { OPENDRAW_VERSION: JSON.stringify(version) },
     banner: '#!/usr/bin/env node'
   })
 ])

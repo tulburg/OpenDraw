@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
+import type { AppInfo } from '../shared/app-info'
 import type { DesignDocument, OpenedDocument, Viewport } from '../shared/document'
 import type { ExportedFile, ExportItem } from './export'
 import type { ListedResource } from './resource-tools'
@@ -80,6 +81,14 @@ const api = {
     return () => ipcRenderer.removeListener('arrange:command', listener)
   },
   setArrangeState: (state: Record<string, boolean>) => ipcRenderer.send('arrange:state', state),
+  /** Version, MCP status and the connect command (S-20). */
+  appInfo: (): Promise<AppInfo> => ipcRenderer.invoke('app:info'),
+  /** The menu asks for the Connect an agent dialog or the About window. */
+  onShowDialog: (handler: (which: 'connect' | 'about') => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, which: 'connect' | 'about') => handler(which)
+    ipcRenderer.on('app:show-dialog', listener)
+    return () => ipcRenderer.removeListener('app:show-dialog', listener)
+  },
   saveViewport: (file: string, pageId: string, viewport: Viewport): Promise<void> =>
     ipcRenderer.invoke('viewport:save', file, pageId, viewport),
   platform: process.platform
@@ -93,7 +102,8 @@ if (process.env.OPENDRAW_TEST) {
     setSize: (width: number, height: number) => ipcRenderer.invoke('test:set-size', width, height),
     setPosition: (x: number, y: number) => ipcRenderer.invoke('test:set-position', x, y),
     setExportDir: (dir: string) => ipcRenderer.invoke('test:set-export-dir', dir),
-    quit: () => ipcRenderer.invoke('test:quit')
+    quit: () => ipcRenderer.invoke('test:quit'),
+    showDialog: (which: 'connect' | 'about') => ipcRenderer.invoke('test:show-dialog', which)
   })
 }
 

@@ -23,7 +23,7 @@ interface AppState {
 }
 
 export function workspaceDir(): string {
-  return process.env.OPENDRAW_WORKSPACE ?? path.join(app.getPath('documents'), 'OpenDraw')
+  return process.env.OPENDRAW_WORKSPACE ?? path.join(app.getPath('documents'), app.isPackaged ? 'OpenDraw' : 'OpenDraw Dev')
 }
 
 function statePath(): string {

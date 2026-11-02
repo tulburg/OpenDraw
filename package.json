@@ -1,5 +1,6 @@
 {
   "name": "opendraw",
+  "productName": "OpenDraw",
   "version": "0.1.0",
   "license": "MIT",
   "private": true,
@@ -9,6 +10,7 @@
     "dev": "bun scripts/dev.ts",
     "build": "vite build && bun scripts/build-electron.ts",
     "start": "bun run build && electron .",
+    "dist": "bun run build && electron-builder",
     "typecheck": "tsc --noEmit",
     "test:launch": "bun run build && bun tests/launch.test.ts",
     "test:engine": "bun run build && bun tests/engine.test.ts",
@@ -29,7 +31,8 @@
     "test:helpers": "bun run build && bun tests/helpers.test.ts",
     "test:layers": "bun run build && bun tests/layers.test.ts",
     "test:arrange": "bun run build && bun tests/arrange.test.ts",
-    "test:perf": "bun run build && bun tests/perf.test.ts"
+    "test:perf": "bun run build && bun tests/perf.test.ts",
+    "test:package": "bun tests/package.test.ts"
   },
   "trustedDependencies": [
     "electron"
@@ -47,10 +50,42 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
     "electron": "^45.2.1",
+    "electron-builder": "^26.18.0",
     "typescript": "^7.0.2",
     "vite": "^8.3.5"
   },
   "bin": {
     "opendraw-mcp": "dist-electron/opendraw-mcp.mjs"
+  },
+  "build": {
+    "appId": "app.opendraw.desktop",
+    "productName": "OpenDraw",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "dist-electron/opendraw-mcp.mjs"
+    ],
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.graphics-design",
+      "identity": "-",
+      "hardenedRuntime": false
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": "AppImage",
+      "category": "Graphics"
+    }
   }
 }

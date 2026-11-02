@@ -30,11 +30,19 @@ import { requestRenderer } from '../rpc'
 import { computedStyles, type RenderTarget, screenshot } from './render'
 
 export const MCP_PATH = '/mcp'
+/** The bridge checks in here every few seconds while it runs, so the app can show an agent as connected. */
+export const AGENT_PATH = '/agent'
+/** A bridge counts as connected for this long after its last check-in or request. */
+const AGENT_TIMEOUT_MS = 12_000
+let agentSeenAt = 0
+
+export function agentConnected(): boolean {
+  return Date.now() - agentSeenAt < AGENT_TIMEOUT_MS
+}
 
 /** The artboard with the file's tokens set on it, as the canvas draws it (S-14). */
 const withTokens = (snap: Snapshot, artboard: Snapshot['document']['pages'][number]['nodes'][number]) =>
   withFileTokens(artboard, snap.document.tokens)
-const VERSION = '0.1.0'
 
 export interface DiscoveryInfo {
   url: string
@@ -60,7 +68,7 @@ interface ServerDeps {
 }
 
 function buildServer({ getWindow, renderTarget }: ServerDeps): McpServer {
-  const server = new McpServer({ name: 'opendraw', version: VERSION }, { instructions: SERVER_INSTRUCTIONS })
+  const server = new McpServer({ name: 'opendraw', version: app.getVersion() }, { instructions: SERVER_INSTRUCTIONS })
 
   /** The document of an open tab: the one with `fileId`, else the one in front (S-13 Req 5). */
   const snapshot = async (fileId?: string): Promise<Snapshot> => {
@@ -342,7 +350,13 @@ export async function startMcpServer(deps: ServerDeps): Promise<{ info: Discover
   const http = createServer(async (req, res) => {
     try {
       const origin = `http://${req.headers.host ?? '127.0.0.1'}`
-      if (new URL(req.url ?? '/', origin).pathname !== MCP_PATH) {
+      const pathname = new URL(req.url ?? '/', origin).pathname
+      if (pathname === AGENT_PATH && req.method === 'POST') {
+        if (!bearerMatches(req.headers.authorization, token)) return void res.writeHead(401).end()
+        agentSeenAt = Date.now()
+        return void res.writeHead(204).end()
+      }
+      if (pathname !== MCP_PATH) {
         res.writeHead(404).end()
         return
       }
@@ -356,6 +370,7 @@ export async function startMcpServer(deps: ServerDeps): Promise<{ info: Discover
         res.writeHead(401, { 'content-type': 'text/plain' }).end('Missing or wrong OpenDraw MCP token')
         return
       }
+      agentSeenAt = Date.now()
       await sendResponse(res, await handler.fetch(request))
     } catch (err) {
       console.error('[mcp] request failed', err)

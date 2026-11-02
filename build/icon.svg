@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2b2f3a"/>
+      <stop offset="1" stop-color="#15171d"/>
+    </linearGradient>
+  </defs>
+  <!-- macOS icon grid: 824 px body centered in the 1024 canvas -->
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#bg)"/>
+  <!-- An artboard frame with a selection: the canvas OpenDraw draws on -->
+  <rect x="262" y="300" width="380" height="300" rx="28" fill="none" stroke="#e8eaf0" stroke-width="36"/>
+  <circle cx="642" cy="600" r="150" fill="#4f7dff"/>
+  <rect x="566" y="524" width="152" height="152" fill="none" stroke="#ffffff" stroke-width="14"/>
+  <rect x="548" y="506" width="36" height="36" fill="#ffffff"/>
+  <rect x="700" y="506" width="36" height="36" fill="#ffffff"/>
+  <rect x="548" y="658" width="36" height="36" fill="#ffffff"/>
+  <rect x="700" y="658" width="36" height="36" fill="#ffffff"/>
+</svg>

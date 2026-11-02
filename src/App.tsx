@@ -5,6 +5,7 @@ import type { WriteToolName } from '../shared/mcp/definitions'
 import { startAutosave } from './document/autosave'
 import { DocumentStore } from './document/store'
 import { Editor, measureNode } from './Editor'
+import { type AppDialog, AppDialogs } from './AppDialogs'
 import { FileBrowser } from './files/FileBrowser'
 import { buildSnapshot } from './mcp/snapshot'
 import { localFamilies } from './fonts/loader'
@@ -38,6 +39,9 @@ export function App() {
   const [tabs, setTabs] = useState<Tab[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
   const [home, setHome] = useState(false)
+  const [dialog, setDialog] = useState<AppDialog | null>(null)
+  const closeDialog = useCallback(() => setDialog(null), [])
+  useEffect(() => window.opendraw.onShowDialog(setDialog), [])
   const [error, setError] = useState<string | null>(null)
   const [loaded, setLoaded] = useState(false)
   // The latest tabs for handlers that run outside React (MCP requests, autosave paths).
@@ -208,18 +212,22 @@ export function App() {
     return (
       <div className="app app-home" data-platform={window.opendraw.platform}>
         {topBar(null)}
-        <FileBrowser openIds={tabs.map((t) => t.id)} onOpen={(id) => void openFile(id)} />
+        <FileBrowser openIds={tabs.map((t) => t.id)} onOpen={(id) => void openFile(id)} onConnect={() => setDialog('connect')} />
+        <AppDialogs open={dialog} onClose={closeDialog} />
       </div>
     )
   }
   return (
-    <Editor
-      key={active.id}
-      opened={active.opened}
-      store={active.store}
-      working={active.working}
-      topBar={topBar}
-      onViewState={(viewport) => onViewState(active, viewport)}
-    />
+    <>
+      <Editor
+        key={active.id}
+        opened={active.opened}
+        store={active.store}
+        working={active.working}
+        topBar={topBar}
+        onViewState={(viewport) => onViewState(active, viewport)}
+      />
+      <AppDialogs open={dialog} onClose={closeDialog} />
+    </>
   )
 }

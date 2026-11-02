@@ -5,7 +5,8 @@ import { app, BrowserWindow, dialog, ipcMain, Menu, screen } from 'electron'
 
 import type { DesignDocument, Viewport } from '../shared/document'
 import { closeRenderWindow, RENDER_PARTITION, renderTargetFor } from './mcp/render'
-import { startMcpServer } from './mcp/server'
+import { type DiscoveryInfo, startMcpServer } from './mcp/server'
+import { appInfo } from './connect'
 import { handleAssets, registerAssetScheme } from './assets'
 import { googleFonts } from './fonts'
 import { exportDir, type ExportItem, runExports } from './export'
@@ -32,10 +33,12 @@ const DEFAULT_SIZE = { width: 1440, height: 900 }
 const MIN_SIZE = { width: 960, height: 600 }
 const SAVE_BOUNDS_DELAY_MS = 300
 
-// Tests point these at throwaway folders so a launch starts from a clean profile.
-if (process.env.OPENDRAW_USER_DATA) app.setPath('userData', process.env.OPENDRAW_USER_DATA)
-
 app.setName('OpenDraw')
+
+// Tests point these at throwaway folders so a launch starts from a clean profile. A dev build keeps
+// its own data, apart from the installed app's (S-20 Req 5); the workspace follows in workspace.ts.
+if (process.env.OPENDRAW_USER_DATA) app.setPath('userData', process.env.OPENDRAW_USER_DATA)
+else if (!app.isPackaged) app.setPath('userData', path.join(app.getPath('appData'), 'OpenDraw Dev'))
 
 /** The saved bounds, if they still fit on a connected display. */
 async function restoredBounds() {
@@ -88,7 +91,24 @@ function sendEdit(command: 'undo' | 'redo') {
 function buildMenu() {
   const isMac = process.platform === 'darwin'
   const template: Electron.MenuItemConstructorOptions[] = [
-    ...(isMac ? [{ role: 'appMenu' as const }] : []),
+    ...(isMac
+      ? [
+          {
+            label: app.name,
+            submenu: [
+              { label: `About ${app.name}`, click: () => showAppDialog('about') },
+              { type: 'separator' as const },
+              { role: 'services' as const },
+              { type: 'separator' as const },
+              { role: 'hide' as const },
+              { role: 'hideOthers' as const },
+              { role: 'unhide' as const },
+              { type: 'separator' as const },
+              { role: 'quit' as const }
+            ]
+          }
+        ]
+      : []),
     { role: 'fileMenu' },
     {
       label: 'Edit',
@@ -121,7 +141,14 @@ function buildMenu() {
       label: 'View',
       submenu: [{ role: 'reload' }, { role: 'toggleDevTools' }, { type: 'separator' }, { role: 'togglefullscreen' }]
     },
-    { role: 'windowMenu' }
+    { role: 'windowMenu' },
+    {
+      role: 'help',
+      submenu: [
+        { label: 'Connect an Agent...', click: () => showAppDialog('connect') },
+        ...(isMac ? [] : [{ label: `About ${app.name}`, click: () => showAppDialog('about') }])
+      ]
+    }
   ]
   Menu.setApplicationMenu(Menu.buildFromTemplate(template))
 }
@@ -191,6 +218,15 @@ async function createWindow() {
 
 let mainWindow: BrowserWindow | null = null
 let stopMcpServer: (() => void) | null = null
+let mcpInfo: DiscoveryInfo | null = null
+
+ipcMain.handle('app:info', () => appInfo(here, mcpInfo))
+
+/** Opens the Connect an agent dialog or the About window in the focused window (S-20). */
+function showAppDialog(which: 'connect' | 'about') {
+  const win = BrowserWindow.getFocusedWindow() ?? mainWindow
+  win?.webContents.send('app:show-dialog', which)
+}
 
 const FLUSH_TIMEOUT_MS = 3000
 let quitting = false
@@ -302,6 +338,7 @@ if (process.env.OPENDRAW_TEST) {
       s.exportDir = dir
     })
   )
+  ipcMain.handle('test:show-dialog', (_event, which: 'connect' | 'about') => showAppDialog(which))
   ipcMain.handle('test:quit', () => {
     setImmediate(() => app.quit())
   })
@@ -314,6 +351,7 @@ app.whenReady().then(async () => {
   try {
     const server = await startMcpServer({ getWindow: () => mainWindow, renderTarget: exportTarget })
     stopMcpServer = server.stop
+    mcpInfo = server.info
   } catch (err) {
     console.error('[mcp] could not start the MCP server', err)
   }

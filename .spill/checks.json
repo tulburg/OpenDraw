@@ -800,5 +800,36 @@
         "detail": "p95 frame 9.3 ms, worst 57.8 ms; 41 row elements rendered"
       }
     ]
+  },
+  "S-20": {
+    "at": "2026-11-02T08:03:17.891Z",
+    "running": false,
+    "results": [
+      {
+        "name": "The home view opens Connect an agent; it shows the command and JSON for this app",
+        "pass": true,
+        "detail": "opened from the home view; claude mcp add opendraw -e ELECTRON_RUN_AS_NODE=1 -e OPENDRAW_MCP_DISCOVERY=/var/folders/pb/cr9x713s3r5fszkp11rsq2cr0000gn/T/opendraw-test-o6PI5Q/user-data/mcp.json -- /Users/tulburg/Developer/OpenDraw/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron /Users/tulburg/Developer/OpenDraw/dist-electron/opendraw-mcp.mjs"
+      },
+      {
+        "name": "The Connect dialog shows \"connected\" while a bridge started from its JSON is attached",
+        "pass": true,
+        "detail": "waiting before; connected with the bridge attached; 41 tools"
+      },
+      {
+        "name": "The About window shows the version from package.json and the MCP port",
+        "pass": true,
+        "detail": "0.1.0 (development); Running on port 51246"
+      },
+      {
+        "name": "The build produces a DMG; its app launches on a clean profile and opens a new file",
+        "pass": true,
+        "detail": "OpenDraw-0.1.0-arm64.dmg; release/mac-arm64/OpenDraw.app opened a new file"
+      },
+      {
+        "name": "The packaged app's Connect command runs its bundled bridge with the app as Node and lists OpenDraw's tools",
+        "pass": true,
+        "detail": "opendraw-mcp 0.1.0; 41 tools; dialog shows connected; claude mcp add opendraw -e ELECTRON_RUN_AS_NODE=1 -e OPENDRAW_MCP_DISCOVERY=/var/folders/pb/cr9x713s3r5fszkp11rsq2cr0000gn/T/opendraw-test-KVULPD/user-data/mcp.json -- /Users/tulburg/Developer/OpenDraw/release/mac-arm64/OpenDraw.app/Contents/MacOS/OpenDraw /Users/tulburg/Developer/OpenDraw/release/mac-arm64/OpenDraw.app/Contents/Resources/app.asar.unpacked/dist-electron/opendraw-mcp.mjs"
+      }
+    ]
   }
 }

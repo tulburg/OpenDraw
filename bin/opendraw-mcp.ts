@@ -16,6 +16,17 @@ interface Discovery {
   token: string
 }
 
+/** Set from package.json when the bridge is built (scripts/build-electron.ts). */
+declare const OPENDRAW_VERSION: string
+
+if (process.argv.includes('--version')) {
+  process.stdout.write(`opendraw-mcp ${OPENDRAW_VERSION}\n`)
+  process.exit(0)
+}
+
+/** How often the bridge tells the app it is attached (S-20), so the app can show an agent as connected. */
+const CHECK_IN_MS = 5000
+
 type Message = { jsonrpc: '2.0'; id?: string | number | null; method?: string; params?: any; result?: unknown; error?: unknown }
 
 function appDataDir(): string {
@@ -149,6 +160,14 @@ async function forward(message: Message) {
     write(reply)
   }
 }
+
+const checkIn = () => {
+  const discovery = readDiscovery()
+  if (!discovery) return
+  fetch(new URL('/agent', discovery.url), { method: 'POST', headers: { authorization: `Bearer ${discovery.token}` } }).catch(() => undefined)
+}
+checkIn()
+setInterval(checkIn, CHECK_IN_MS).unref()
 
 // Messages are handled in order, so responses come back in the order requests arrived.
 let chain = Promise.resolve()

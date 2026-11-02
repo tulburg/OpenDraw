@@ -14,12 +14,17 @@ export class BridgeClient {
     void this.readLoop()
   }
 
-  static async start(discoveryFile: string): Promise<BridgeClient> {
-    const proc = Bun.spawn(['node', path.join(ROOT, 'dist-electron/opendraw-mcp.mjs')], {
+  static start(discoveryFile: string): Promise<BridgeClient> {
+    return BridgeClient.spawn(['node', path.join(ROOT, 'dist-electron/opendraw-mcp.mjs')], { OPENDRAW_MCP_DISCOVERY: discoveryFile })
+  }
+
+  /** Runs the bridge the way an MCP client config does: a command, its arguments and extra env (S-20). */
+  static async spawn(command: string[], env: Record<string, string>): Promise<BridgeClient> {
+    const proc = Bun.spawn(command, {
       stdin: 'pipe',
       stdout: 'pipe',
       stderr: 'inherit',
-      env: { ...process.env, OPENDRAW_MCP_DISCOVERY: discoveryFile }
+      env: { ...process.env, ...env }
     })
     const client = new BridgeClient(proc)
     await client.request('initialize', {

@@ -37,9 +37,11 @@ export class App {
     }
   }
 
-  static async launch(profile: Profile, port = 9333): Promise<App> {
+  /** Launches the dev build, or `executable` (a packaged app's binary) when given. */
+  static async launch(profile: Profile, port = 9333, executable?: string): Promise<App> {
     const electronPath = (await import(path.join(ROOT, 'node_modules/electron/index.js'))).default as string
-    const proc = Bun.spawn([electronPath, ROOT, `--remote-debugging-port=${port}`], {
+    const command = executable ? [executable, `--remote-debugging-port=${port}`] : [electronPath, ROOT, `--remote-debugging-port=${port}`]
+    const proc = Bun.spawn(command, {
       env: {
         ...process.env,
         OPENDRAW_TEST: '1',
