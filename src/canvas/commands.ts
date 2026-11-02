@@ -1,6 +1,7 @@
 // Edit commands on the selection (S-6 Req 6): delete, duplicate, copy, paste and select all. Each
 // is one transaction, so one undo step.
 import type { DesignNode } from '../../shared/document'
+import { toHTML } from '../../shared/html-out'
 import { toJSX } from '../../shared/mcp/jsx'
 import type { DocumentStore, Transaction } from '../document/store'
 import { cloneWithNewIds, findNode } from '../document/tree'
@@ -39,13 +40,13 @@ export function duplicateSelection(store: DocumentStore, measure: Measure) {
   })
 }
 
-/** The selected layers as clipboard data: OpenDraw's own format, plus JSX for pasting into code. */
-export function copySelection(store: DocumentStore): { json: string; text: string } | null {
+/** The selected layers as clipboard data: OpenDraw's own format, plus JSX and HTML for other apps (S-23 Req 5). */
+export function copySelection(store: DocumentStore): { json: string; text: string; html: string } | null {
   const { selection } = store.getState()
   const nodes = selection.map((id) => findNode(pageNodes(store), id)).filter((n): n is DesignNode => n !== null)
   if (nodes.length === 0) return null
   const text = nodes.map((node) => toJSX(node, { format: 'inline-styles', includeNodeIds: false, includeRootPositioning: false })).join('\n')
-  return { json: JSON.stringify({ opendraw: 1, nodes }), text }
+  return { json: JSON.stringify({ opendraw: 1, nodes }), text, html: nodes.map((node) => toHTML(node)).join('\n') }
 }
 
 /**

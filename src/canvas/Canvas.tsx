@@ -37,10 +37,14 @@ import {
   isPlaceableImage,
   type Placement,
   placeImage,
+  placeLayers,
   replaceImage,
+  textLayer,
   type Tool,
   TOOL_BY_KEY
 } from './tools'
+import { parseHTML, pastedFragment } from '../mcp/html'
+import { showNotice } from '../panels/notice'
 import { deeper, nodeElement, parentIdOf, pathAt, pickAtDepth } from './selection'
 import { nodeRect, type Rect, toScreen, zoomAt } from './viewport'
 
@@ -371,12 +375,14 @@ export function Canvas({
       event.preventDefault()
       event.clipboardData.setData(CLIPBOARD_TYPE, data.json)
       event.clipboardData.setData('text/plain', data.text)
+      event.clipboardData.setData('text/html', data.html)
       if (event.type === 'cut') deleteSelection(store)
     }
     const onPaste = (event: ClipboardEvent) => {
       if (isTyping(document.activeElement)) return
       const json = event.clipboardData?.getData(CLIPBOARD_TYPE)
       if (json && paste(store, json, measure)) event.preventDefault()
+      else if (event.clipboardData && pasteExternal.current(event.clipboardData)) event.preventDefault()
     }
     window.addEventListener('keydown', down)
     window.addEventListener('keyup', up)
@@ -457,6 +463,61 @@ export function Canvas({
   const containerSizeOf = (parentId: string | null) => {
     const el = parentId ? nodeElement(ref.current!, parentId) : null
     return el ? { width: el.clientWidth, height: el.clientHeight } : null
+  }
+
+  /**
+   * Where layers pasted from another app go (S-23 Req 1): the selected frame or artboard, the container
+   * of a selected layer, or the artboard at the middle of the view. They land at the middle of the view
+   * when it is inside that container, otherwise at its top-left corner.
+   */
+  const pasteTarget = (): Placement => {
+    const bounds = ref.current!.getBoundingClientRect()
+    const center = { x: bounds.width / 2, y: bounds.height / 2 }
+    const selected = store.getState().selection[0]
+    const node = selected ? findNode(nodesRef.current, selected) : null
+    let parentId = node && (node.type === 'frame' || node.type === 'artboard') ? node.id : selected ? parentIdOf(ref.current!, selected) : null
+    parentId ??= containerOn(pathAt(document.elementFromPoint(bounds.left + center.x, bounds.top + center.y)), nodesRef.current)
+    let point = center
+    const el = parentId ? nodeElement(ref.current!, parentId) : null
+    if (el) {
+      const r = el.getBoundingClientRect()
+      const inside = bounds.left + center.x >= r.left && bounds.left + center.x <= r.right && bounds.top + center.y >= r.top && bounds.top + center.y <= r.bottom
+      if (!inside) point = { x: r.left - bounds.left, y: r.top - bounds.top }
+    }
+    return placementFor(parentId, { ...point, width: 0, height: 0 }, true)
+  }
+
+  /** Pastes images, SVG, HTML or text from another app (S-23). Returns false when there is nothing to paste. */
+  const pasteExternal = useRef<(data: DataTransfer) => boolean>(() => false)
+  pasteExternal.current = (data) => {
+    const file = [...data.files].find(isPlaceableImage)
+    const html = data.getData('text/html')
+    const plain = data.getData('text/plain')
+    const svg = data.getData('image/svg+xml') || (/^\s*<svg[\s>]/i.test(plain) ? plain : '')
+    if (!file && !svg && !html.trim() && !plain.trim()) return false
+    const placement = pasteTarget()
+    if (file || svg) {
+      void placeImage(store, file ?? new File([svg], 'SVG.svg', { type: 'image/svg+xml' }), placement, containerSizeOf(placement.parentId), true)
+      return true
+    }
+    if (placement.parentId === null) {
+      showNotice('Select a frame or artboard to paste into')
+      return true
+    }
+    // Markup copied as text (from a code editor) is the HTML the user means; its text/html is only highlighting.
+    const markup = /^\s*<[a-z][\s\S]*>\s*$/i.test(plain) ? plain : html ? pastedFragment(html) : ''
+    let layers = [textLayer(plain)]
+    if (markup) {
+      const parsed = parseHTML(markup)
+      if (parsed.nodes.length > 0) layers = parsed.nodes
+      if (parsed.dropped.length > 0) {
+        const more = parsed.dropped.length > 2 ? ` and ${parsed.dropped.length - 2} more` : ''
+        showNotice(`Pasted. Left out: ${parsed.dropped.slice(0, 2).join('; ')}${more}`)
+      }
+    }
+    if (!markup && !plain.trim()) return false
+    placeLayers(store, { ...placement, parentId: placement.parentId }, layers)
+    return true
   }
 
   const addImage = async (file: File, placement: Placement, containerSize: { width: number; height: number } | null) => {

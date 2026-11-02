@@ -862,5 +862,46 @@
         "detail": "picture replaced; no layer added"
       }
     ]
+  },
+  "S-23": {
+    "at": "2026-11-02T08:28:17.289Z",
+    "running": false,
+    "results": [
+      {
+        "name": "Pasting a PNG adds an image layer in the selected frame at its natural size; one undo removes it",
+        "pass": true,
+        "detail": "image 120px x 80px in Box, selected; undo removed it"
+      },
+      {
+        "name": "Pasting an SVG string adds an SVG layer with its <script> removed",
+        "pass": true,
+        "detail": "SVG layer 24 x 24 with the circle and no script"
+      },
+      {
+        "name": "Pasting HTML adds a flex frame with rich text, and a notice reports margin dropped",
+        "pass": true,
+        "detail": "flex frame, gap 8px, rich text \"Hi there\" with bold \"there\"; notice: Pasted. Left out: margin on <div>: margin is not supported; use padding and gap"
+      },
+      {
+        "name": "HTML copied as text from a code editor converts the markup, not its highlighting",
+        "pass": true,
+        "detail": "the frame named Pill from the text, not the highlighted copy"
+      },
+      {
+        "name": "Pasting plain text adds a text layer with that text",
+        "pass": true,
+        "detail": "text layer \"Hello from another app\", positioned in Box"
+      },
+      {
+        "name": "Copying a frame puts its HTML on the system clipboard; pasting it back gives an identical copy",
+        "pass": true,
+        "detail": "text/html holds the Card's HTML (275 chars); pasted back as an identical copy"
+      },
+      {
+        "name": "Pasting while typing in a field keeps the normal text paste",
+        "pass": true,
+        "detail": "the field got \"42\"; no layer added"
+      }
+    ]
   }
 }

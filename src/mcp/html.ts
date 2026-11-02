@@ -353,6 +353,12 @@ export function parseInlineText(html: string): { text: string; spans: TextSpan[]
   return { text: plainText(spans), spans, dropped }
 }
 
+/** The part of clipboard HTML that was copied: between the fragment markers browsers add, or the body. */
+export function pastedFragment(html: string): string {
+  const marked = html.match(/<!--StartFragment-->([\s\S]*)<!--EndFragment-->/)
+  return marked ? marked[1] : new DOMParser().parseFromString(html, 'text/html').body.innerHTML
+}
+
 /** Formatted runs from pasted HTML, laid out as a browser shows it (whitespace collapsed). */
 export function parsePastedText(html: string): TextSpan[] {
   const doc = new DOMParser().parseFromString(html, 'text/html')

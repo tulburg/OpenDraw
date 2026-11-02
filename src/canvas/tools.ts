@@ -150,16 +150,24 @@ export async function placeImage(
   store: DocumentStore,
   file: File,
   placement: Placement,
-  containerSize: { width: number; height: number } | null
+  containerSize: { width: number; height: number } | null,
+  /** Pasting: fit the whole container and move the image back inside it, rather than fit the room past the point. */
+  keepInside = false
 ): Promise<string> {
   const isSvg = file.type === 'image/svg+xml'
   const svg = isSvg ? sanitizeSvg(await readFile(file, 'text')) : ''
   const src = isSvg ? '' : await readFile(file, 'dataURL')
   let size = isSvg ? svgSize(svg) : await naturalSize(src)
   if (containerSize) {
-    const room = { width: containerSize.width - (placement.flex ? 0 : placement.box.left), height: containerSize.height - (placement.flex ? 0 : placement.box.top) }
+    const from = placement.flex || keepInside ? { left: 0, top: 0 } : placement.box
+    const room = { width: containerSize.width - from.left, height: containerSize.height - from.top }
     const scale = Math.min(1, room.width / size.width, room.height / size.height)
     if (scale > 0 && scale < 1) size = { width: size.width * scale, height: size.height * scale }
+    if (keepInside) {
+      const left = Math.max(0, Math.min(placement.box.left, containerSize.width - size.width))
+      const top = Math.max(0, Math.min(placement.box.top, containerSize.height - size.height))
+      placement = { ...placement, box: { ...placement.box, left, top } }
+    }
   }
   const name = file.name.replace(/\.[^.]+$/, '') || (isSvg ? 'SVG' : 'Image')
   const layer: DesignNode = isSvg
@@ -182,3 +190,26 @@ export async function placeImage(
   return insert(store, placement, layer)
 }
 
+/**
+ * Adds layers pasted from another app (S-23) at `placement` as one undo step and selects them. In a
+ * container that is not a flex box, layers without a position of their own are placed at the point.
+ */
+export function placeLayers(store: DocumentStore, placement: Placement & { parentId: string }, layers: DesignNode[]): string[] {
+  store.transact('Paste', (tx) => {
+    const parent = tx.node(placement.parentId)
+    if (!placement.flex) {
+      if (parent.type === 'frame' && !parent.style.position) tx.updateStyles([parent.id], { position: 'relative' })
+      for (const layer of layers) {
+        if (!layer.style.position) layer.style = { ...layer.style, position: 'absolute', left: px(placement.box.left), top: px(placement.box.top) }
+      }
+    }
+    tx.insertNodes(placement.parentId, undefined, layers)
+    tx.select(layers.map((l) => l.id))
+  })
+  return layers.map((l) => l.id)
+}
+
+/** A text layer holding pasted plain text. */
+export function textLayer(text: string): DesignNode {
+  return { id: newId(), type: 'text', name: text.trim().slice(0, 40) || 'Text', text, style: {}, children: [] }
+}
