@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
 import type { DesignDocument, OpenedDocument, Viewport } from '../shared/document'
+import type { ListedResource } from './resource-tools'
 
 type MainRequestHandler = (payload: unknown) => unknown | Promise<unknown>
 const mainRequestHandlers = new Map<string, MainRequestHandler>()
@@ -23,7 +24,28 @@ const api = {
       if (mainRequestHandlers.get(channel) === handler) mainRequestHandlers.delete(channel)
     }
   },
-  openInitialDocument: (): Promise<OpenedDocument> => ipcRenderer.invoke('document:open-initial'),
+  openInitialTabs: (): Promise<{ tabs: OpenedDocument[]; activeId: string }> => ipcRenderer.invoke('workspace:open-initial'),
+  openFile: (id: string): Promise<OpenedDocument> => ipcRenderer.invoke('workspace:open', id),
+  /** Reports the open tabs in order and the one in front, so they come back on the next launch. */
+  setTabs: (ids: string[], activeId: string | null): Promise<void> => ipcRenderer.invoke('workspace:tabs', ids, activeId),
+  listResources: (args: { parentId?: string; includeArchived?: boolean; limit?: number }): Promise<{ items: ListedResource[]; truncated?: boolean }> =>
+    ipcRenderer.invoke('workspace:list', args),
+  createFile: (args: { name?: string; parentId?: string; cloneFileId?: string }): Promise<{ id: string; name: string }> =>
+    ipcRenderer.invoke('workspace:create-file', args),
+  createFolder: (args: { name?: string; parentId?: string }): Promise<{ id: string; name: string }> =>
+    ipcRenderer.invoke('workspace:create-folder', args),
+  moveResources: (args: { resourceIds: string[]; parentId: string }): Promise<unknown> => ipcRenderer.invoke('workspace:move', args),
+  renameResource: (args: { resourceId: string; name: string }): Promise<unknown> => ipcRenderer.invoke('workspace:rename', args),
+  setArchived: (args: { resourceIds: string[] }, archived: boolean): Promise<unknown> =>
+    ipcRenderer.invoke('workspace:archive', args, archived),
+  /** A file's saved document, for thumbnails in the file browser. */
+  readFile: (id: string): Promise<DesignDocument> => ipcRenderer.invoke('workspace:read-file', id),
+  /** A file was renamed or moved on disk; its tab saves to the new path. */
+  onFileMoved: (handler: (id: string, path: string) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, id: string, path: string) => handler(id, path)
+    ipcRenderer.on('workspace:file-moved', listener)
+    return () => ipcRenderer.removeListener('workspace:file-moved', listener)
+  },
   saveDocument: (file: string, document: DesignDocument): Promise<void> =>
     ipcRenderer.invoke('document:save', file, document),
   /** Blocks until written; only for page unload. Returns an error message, or null. */

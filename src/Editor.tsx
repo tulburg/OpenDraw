@@ -1,16 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
 
 import type { CSSStyle, OpenedDocument, Viewport } from '../shared/document'
 import { Canvas } from './canvas/Canvas'
 import { fitViewport, nextZoomStep, zoomAt } from './canvas/viewport'
 import { type DocumentStore, useStore } from './document/store'
-import type { WriteToolName } from '../shared/mcp/definitions'
-import { buildSnapshot } from './mcp/snapshot'
-import { useWorking, WorkingIndicators } from './mcp/working'
-import { runWriteTool } from './mcp/write'
+import { useWorking, type WorkingIndicators } from './mcp/working'
 import { LayersPanel } from './panels/LayersPanel'
 import { StylesPanel } from './panels/StylesPanel'
-import { TopBar } from './panels/TopBar'
 
 const SAVE_VIEWPORT_DELAY_MS = 300
 
@@ -26,7 +22,7 @@ function runEditCommand(store: DocumentStore, command: 'undo' | 'redo') {
 }
 
 /** A node's rendered size in world units, or null when it is not on the canvas. */
-function measureNode(id: string) {
+export function measureNode(id: string) {
   const world = document.querySelector<HTMLElement>('.canvas-world')
   const el = world?.querySelector(`[data-node-id="${CSS.escape(id)}"]`)
   if (!world || !el) return null
@@ -35,13 +31,22 @@ function measureNode(id: string) {
   return { width: box.width / zoom, height: box.height / zoom }
 }
 
-export function Editor({ opened, store }: { opened: OpenedDocument; store: DocumentStore }) {
+interface EditorProps {
+  opened: OpenedDocument
+  store: DocumentStore
+  working: WorkingIndicators
+  /** The top bar, given the zoom to show. */
+  topBar: (zoom: number | null) => ReactNode
+  /** Called as the viewport changes, so the tab can come back to it. */
+  onViewState: (viewport: Viewport | null) => void
+}
+
+export function Editor({ opened, store, working, topBar, onViewState }: EditorProps) {
   const doc = useStore(store, (s) => s.document)
   const pageId = useStore(store, (s) => s.pageId)
   const selection = useStore(store, (s) => s.selection)
   const [viewport, setViewport] = useState<Viewport | null>(opened.viewport)
   const canvasSize = useRef<{ width: number; height: number } | null>(null)
-  const [working] = useState(() => new WorkingIndicators())
   const [panelPreview, setPanelPreview] = useState<Record<string, CSSStyle>>({})
   const onPanelPreview = useCallback((preview: Record<string, CSSStyle> | null) => setPanelPreview(preview ?? {}), [])
   const workingIds = useWorking(working)
@@ -61,6 +66,8 @@ export function Editor({ opened, store }: { opened: OpenedDocument; store: Docum
     [nodes]
   )
 
+  useEffect(() => onViewState(viewport), [onViewState, viewport, pageId])
+
   useEffect(() => {
     if (!viewport) return
     const timer = setTimeout(
@@ -72,20 +79,6 @@ export function Editor({ opened, store }: { opened: OpenedDocument; store: Docum
 
   useEffect(() => window.opendraw.onEditCommand((command) => runEditCommand(store, command)), [store])
 
-  // The MCP server (main process) reads the document and live layout through this.
-  useEffect(
-    () => window.opendraw.handleMainRequest('mcp:snapshot', () => buildSnapshot(store, opened.path)),
-    [store, opened.path]
-  )
-  useEffect(
-    () =>
-      window.opendraw.handleMainRequest('mcp:write', (payload) => {
-        const { tool, args } = payload as { tool: WriteToolName; args: unknown }
-        return runWriteTool({ store, working, measure: measureNode }, tool, args)
-      }),
-    [store, working]
-  )
-  useEffect(() => () => void working.release(), [working])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -123,11 +116,10 @@ export function Editor({ opened, store }: { opened: OpenedDocument; store: Docum
     },
     [store]
   )
-  const fileName = (opened.path.split(/[\\/]/).pop() ?? '').replace(/\.opendraw$/, '')
 
   return (
     <div className="app" data-platform={window.opendraw.platform}>
-      <TopBar fileName={fileName} zoom={viewport?.zoom ?? null} />
+      {topBar(viewport?.zoom ?? null)}
       <LayersPanel nodes={nodes} selection={selection} onSelect={selectLayer} />
       {/* Nodes stay hidden until the viewport is known, so a new file never flashes unfitted. */}
       <Canvas

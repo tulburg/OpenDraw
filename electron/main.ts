@@ -6,14 +6,19 @@ import { app, BrowserWindow, ipcMain, Menu, screen } from 'electron'
 import type { DesignDocument, Viewport } from '../shared/document'
 import { closeRenderWindow, renderTargetFor } from './mcp/render'
 import { startMcpServer } from './mcp/server'
+import * as resources from './resource-tools'
 import {
+  fileMoved,
   flushState,
-  openInitialDocument,
+  openFileById,
+  openInitialTabs,
   readState,
   saveDocument,
   saveDocumentSync,
   saveViewport,
-  updateState
+  setTabs,
+  updateState,
+  workspace
 } from './workspace'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
@@ -160,7 +165,21 @@ function flushRenderer(win: BrowserWindow): Promise<void> {
   })
 }
 
-ipcMain.handle('document:open-initial', () => openInitialDocument())
+ipcMain.handle('workspace:open-initial', () => openInitialTabs())
+ipcMain.handle('workspace:open', (_event, id: string) => openFileById(id))
+ipcMain.handle('workspace:tabs', (_event, ids: string[], activeId: string | null) => setTabs(ids, activeId))
+// The file browser (S-13 Req 2) uses the same operations as the MCP resource tools.
+ipcMain.handle('workspace:list', (_event, args) => resources.listResources(args))
+ipcMain.handle('workspace:create-file', (_event, args) => resources.createFile(args, () => mainWindow))
+ipcMain.handle('workspace:create-folder', (_event, args) => resources.createFolder(args))
+ipcMain.handle('workspace:move', (_event, args) => resources.moveResources(args))
+ipcMain.handle('workspace:rename', (_event, args) => resources.renameResource(args))
+ipcMain.handle('workspace:archive', (_event, args, archived: boolean) => resources.setArchived(args, archived))
+ipcMain.handle('workspace:read-file', (_event, id: string) => resources.readSavedDocument(id))
+workspace().onFileMoved = (id, from, to) => {
+  fileMoved(from, to)
+  mainWindow?.webContents.send('workspace:file-moved', id, to)
+}
 ipcMain.handle('document:save', (_event, file: string, document: DesignDocument) => saveDocument(file, document))
 ipcMain.on('document:save-sync', (event, file: string, document: DesignDocument) => {
   try {

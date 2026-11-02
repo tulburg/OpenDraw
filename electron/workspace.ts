@@ -1,14 +1,18 @@
-import { existsSync, renameSync, writeFileSync } from 'node:fs'
-import { mkdir, readdir, readFile, rename, stat, writeFile } from 'node:fs/promises'
+import { renameSync, writeFileSync } from 'node:fs'
+import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
 import { app } from 'electron'
 
 import type { DesignDocument, OpenedDocument, Viewport } from '../shared/document'
-import { createFirstDocument, DOCUMENT_EXTENSION } from '../shared/document'
+import { createFirstDocument } from '../shared/document'
+import { ResourceError, Workspace } from './resources'
 
 interface AppState {
   lastFile?: string
+  /** Open tabs by file ID, in order, and the one in front (S-13). */
+  openFiles?: string[]
+  activeFile?: string
   /** Last viewport per file path and page. */
   viewports: Record<string, { pageId: string; viewport: Viewport }>
   window?: { x: number; y: number; width: number; height: number }
@@ -81,55 +85,89 @@ export function saveDocumentSync(file: string, document: DesignDocument) {
   renameSync(tmp, file)
 }
 
-async function newestDocument(dir: string): Promise<string | null> {
-  const names = existsSync(dir) ? await readdir(dir) : []
-  const files = names.filter((name) => name.endsWith(DOCUMENT_EXTENSION)).map((name) => path.join(dir, name))
-  const withTimes = await Promise.all(files.map(async (file) => ({ file, mtime: (await stat(file)).mtimeMs })))
-  withTimes.sort((a, b) => b.mtime - a.mtime)
-  return withTimes[0]?.file ?? null
+let workspaceInstance: Workspace | null = null
+
+/** The workspace folder's files and folders (S-13). */
+export function workspace(): Workspace {
+  workspaceInstance ??= new Workspace(workspaceDir())
+  return workspaceInstance
 }
 
-async function uniquePath(dir: string, base: string): Promise<string> {
-  let candidate = path.join(dir, `${base}${DOCUMENT_EXTENSION}`)
-  for (let n = 2; existsSync(candidate); n++) candidate = path.join(dir, `${base} ${n}${DOCUMENT_EXTENSION}`)
-  return candidate
+/** Open tabs, as the renderer last reported them: file IDs in order and the one in front. */
+export const tabs = { ids: [] as string[], activeId: null as string | null }
+
+async function openDocument(file: string): Promise<OpenedDocument> {
+  const state = await readState()
+  const document = JSON.parse(await readFile(file, 'utf8')) as DesignDocument
+  openedFiles.add(file)
+  const saved = state.viewports[file]
+  const page = document.pages.find((p) => p.id === saved?.pageId) ?? document.pages[0]
+  return { path: file, document, pageId: page.id, viewport: saved?.pageId === page.id ? saved.viewport : null }
+}
+
+/** Opens a workspace file by ID for a new tab. */
+export async function openFileById(id: string): Promise<OpenedDocument> {
+  const resource = workspace().get(id) ?? (await workspace().scan(), workspace().get(id))
+  if (!resource || resource.type !== 'file') throw new ResourceError(`No file with ID ${id}`)
+  if (resource.archived) throw new ResourceError(`File ${id} is archived; unarchive it first`)
+  return openDocument(resource.path)
 }
 
 let opening: Promise<unknown> = Promise.resolve()
 
 /**
- * Reopens the last file, else the newest file in the workspace, else creates the first-run file:
- * an untitled document with one 1440x900 Desktop artboard (S-2 Req 6 and 7).
- * Calls run one at a time, so overlapping requests (a reload, React StrictMode) never create two files.
+ * Restores the open tabs, else reopens the last file or the newest one, else creates the first-run
+ * file: an untitled document with one 1440x900 Desktop artboard (S-2 Req 6 and 7). Calls run one
+ * at a time, so overlapping requests (a reload, React StrictMode) never create two files.
  */
-export function openInitialDocument(): Promise<OpenedDocument> {
-  const next = opening.then(openInitialDocumentNow, openInitialDocumentNow)
+export function openInitialTabs(): Promise<{ tabs: OpenedDocument[]; activeId: string }> {
+  const next = opening.then(openInitialTabsNow, openInitialTabsNow)
   opening = next.catch(() => undefined)
   return next
 }
 
-async function openInitialDocumentNow(): Promise<OpenedDocument> {
+async function openInitialTabsNow(): Promise<{ tabs: OpenedDocument[]; activeId: string }> {
   const state = await readState()
-  const dir = workspaceDir()
-  await mkdir(dir, { recursive: true })
-
-  let file = state.lastFile && existsSync(state.lastFile) ? state.lastFile : await newestDocument(dir)
-  let document: DesignDocument
-  if (file) {
-    document = JSON.parse(await readFile(file, 'utf8')) as DesignDocument
-  } else {
-    document = createFirstDocument()
-    file = await uniquePath(dir, document.name)
-    await writeDocument(file, document)
+  const resources = await workspace().scan()
+  const usable = (id: string) => {
+    const r = workspace().get(id)
+    return r?.type === 'file' && !r.archived ? r : undefined
   }
+  let ids = (state.openFiles ?? []).filter((id) => usable(id))
+  if (ids.length === 0) {
+    const last = state.lastFile ? workspace().byPath(state.lastFile) : undefined
+    const newest = resources.filter((r) => r.type === 'file' && !r.archived).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0]
+    const file = (last && usable(last.id)) ?? newest ?? (await workspace().addDocument(createFirstDocument()))
+    ids = [file.id]
+  }
+  const activeId = state.activeFile && ids.includes(state.activeFile) ? state.activeFile : ids[0]
+  const opened = await Promise.all(ids.map((id) => openDocument(workspace().get(id)!.path)))
+  await setTabs(ids, activeId)
+  return { tabs: opened, activeId }
+}
 
-  openedFiles.add(file)
-  const saved = state.viewports[file]
-  const page = document.pages.find((p) => p.id === saved?.pageId) ?? document.pages[0]
-  await updateState((s) => {
-    s.lastFile = file
+/** Records the open tabs (S-13 Req 3), so they come back on the next launch. */
+export function setTabs(ids: string[], activeId: string | null): Promise<void> {
+  tabs.ids = ids
+  tabs.activeId = activeId
+  const active = activeId ? workspace().get(activeId)?.path : undefined
+  return updateState((s) => {
+    s.openFiles = ids
+    s.activeFile = activeId ?? undefined
+    if (active) s.lastFile = active
   })
-  return { path: file, document, pageId: page.id, viewport: saved?.pageId === page.id ? saved.viewport : null }
+}
+
+/** A file moved or was renamed on disk: saves and saved viewports follow it. */
+export function fileMoved(from: string, to: string) {
+  if (openedFiles.delete(from)) openedFiles.add(to)
+  void updateState((s) => {
+    if (s.viewports[from]) {
+      s.viewports[to] = s.viewports[from]
+      delete s.viewports[from]
+    }
+    if (s.lastFile === from) s.lastFile = to
+  })
 }
 
 export function saveViewport(file: string, pageId: string, viewport: Viewport): Promise<void> {

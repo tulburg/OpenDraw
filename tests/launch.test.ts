@@ -25,7 +25,7 @@ try {
     expect(layers.length === 1 && layers[0] === 'Desktop', `layers: ${layers}`)
     const stylesEmpty = await app.eval(`document.querySelector('.styles-panel .panel-empty')?.textContent ?? ''`)
     expect(stylesEmpty.length > 0, 'styles panel has no empty state')
-    const files = readdirSync(profile.workspace)
+    const files = readdirSync(profile.workspace).filter((f) => !f.startsWith('.'))
     expect(files.length === 1 && files[0] === 'Untitled.opendraw', `workspace files: ${files}`)
     const canvas = await app.rect('.canvas')
     const board = await app.rect('[data-node-type=artboard]')
@@ -154,7 +154,7 @@ try {
 
   app = await App.launch(profile)
   await check('Relaunch: same file at the same pan and zoom; window keeps size and position', async () => {
-    const files = readdirSync(profile.workspace)
+    const files = readdirSync(profile.workspace).filter((f) => !f.startsWith('.'))
     expect(files.length === 1, `workspace files: ${files}`)
     expect((await app.eval(`document.querySelector('[data-testid=file-name]').textContent`)) === 'Untitled', 'different file')
     const after = await app.viewport()
@@ -173,9 +173,9 @@ try {
   await check('Overlapping first-run opens create one file (reload, React StrictMode)', async () => {
     for (const file of readdirSync(raceProfile.workspace)) rmSync(path.join(raceProfile.workspace, file))
     const paths = await app.eval<string[]>(
-      `Promise.all([opendraw.openInitialDocument(), opendraw.openInitialDocument()]).then((r) => r.map((d) => d.path))`
+      `Promise.all([opendraw.openInitialTabs(), opendraw.openInitialTabs()]).then((r) => r.map((d) => d.tabs[0].path))`
     )
-    const files = readdirSync(raceProfile.workspace)
+    const files = readdirSync(raceProfile.workspace).filter((f) => !f.startsWith('.'))
     expect(paths[0] === paths[1], `different files: ${paths}`)
     expect(files.length === 1 && files[0] === 'Untitled.opendraw', `workspace files: ${files}`)
     return 'two concurrent opens returned the same Untitled.opendraw'

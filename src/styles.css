@@ -729,3 +729,264 @@ body {
   box-shadow: inset 0 0 0 2px var(--accent);
   pointer-events: none;
 }
+
+/* Tabs and the home view (S-13). */
+.tab-strip {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.home-button,
+.tab {
+  -webkit-app-region: no-drag;
+}
+
+.home-button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.home-button:hover,
+.home-button.active {
+  background: var(--row-hover);
+  color: var(--text);
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 200px;
+  height: 28px;
+  padding: 0 4px 0 10px;
+  border-radius: 6px;
+  color: var(--text-muted);
+  cursor: default;
+}
+
+.tab:hover {
+  background: var(--row-hover);
+}
+
+.tab.active {
+  background: var(--row-hover);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.tab-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.tab-close {
+  width: 18px;
+  height: 18px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  line-height: 1;
+  visibility: hidden;
+}
+
+.tab:hover .tab-close,
+.tab.active .tab-close {
+  visibility: visible;
+}
+
+.tab-close:hover {
+  background: var(--border);
+}
+
+.app-home {
+  grid-template-columns: 1fr;
+  grid-template-areas:
+    'top'
+    'browser';
+}
+
+.file-browser {
+  grid-area: browser;
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  min-height: 0;
+  background: var(--bg);
+}
+
+.browser-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 8px;
+  border-right: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.browser-sidebar button {
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+}
+
+.browser-sidebar button.active,
+.browser-sidebar button:hover {
+  background: var(--row-hover);
+}
+
+.browser-main {
+  overflow: auto;
+  padding: 20px 24px;
+}
+
+.browser-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.breadcrumbs button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.breadcrumbs button:hover {
+  background: var(--row-hover);
+}
+
+.crumb-sep {
+  color: var(--text-muted);
+  padding: 0 2px;
+}
+
+.browser-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.browser-actions button {
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+}
+
+.browser-actions button.primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.browser-error {
+  margin-bottom: 12px;
+  color: #e5484d;
+}
+
+.browser-empty {
+  padding: 48px 0;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.resource-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 222px);
+  gap: 20px;
+}
+
+.resource-card {
+  position: relative;
+  border-radius: 8px;
+  cursor: default;
+}
+
+.resource-card .thumb {
+  position: relative;
+  width: 220px;
+  height: 140px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--canvas);
+}
+
+.resource-card:hover .thumb,
+.resource-card.drop-target .thumb {
+  border-color: var(--accent);
+}
+
+.resource-card.drop-target .thumb {
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.folder-thumb {
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
+}
+
+.resource-meta {
+  padding: 8px 2px 0;
+}
+
+.resource-name {
+  overflow: hidden;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.resource-name-input {
+  width: 100%;
+  font: inherit;
+  font-weight: 600;
+}
+
+.resource-time {
+  margin-top: 2px;
+  color: var(--text-muted);
+}
+
+.resource-action {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--panel);
+  color: var(--text);
+  visibility: hidden;
+}
+
+.resource-card:hover .resource-action {
+  visibility: visible;
+}

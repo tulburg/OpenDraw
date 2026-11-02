@@ -421,5 +421,71 @@
         "detail": "P3 snapped to 360px with 2 spacing markers"
       }
     ]
+  },
+  "S-13": {
+    "at": "2026-11-02T03:32:23.190Z",
+    "running": false,
+    "results": [
+      {
+        "name": "The workspace gets an index with stable IDs; the existing file keeps its ID",
+        "pass": true,
+        "detail": "list_resources: {\"type\":\"file\",\"id\":\"file-main\",\"name\":\"Main\",\"createdAt\":\"2026-11-02T03:32:04.589Z\",\"updatedAt\":\"2026-11-02T03:32:04.589Z\",\"open\":true,\"active\":true}"
+      },
+      {
+        "name": "Browser: a folder and a file in it show up in list_resources with the right parentId and on disk",
+        "pass": true,
+        "detail": "folder b774f491-ac52-4f41-b1df-4be9f2d3feb2 with Untitled (open in tab 9a0bce3f-0a9a-4e68-af8d-703ed438d0b5)"
+      },
+      {
+        "name": "Browser: renaming and archiving work, and the Archive view restores",
+        "pass": true,
+        "detail": "renamed to \"Client work\" on disk, archived, restored from the Archive view"
+      },
+      {
+        "name": "create_folder and create_file land in list_resources with the right parentId, and on disk",
+        "pass": true,
+        "detail": "Agents/{Landing, Untitled project}; a 600-char name stored as 500"
+      },
+      {
+        "name": "create_file with cloneFileId copies pages and nodes with new IDs",
+        "pass": true,
+        "detail": "3 pages and nodes copied, none sharing an ID"
+      },
+      {
+        "name": "move_resources with one invalid ID moves nothing; valid IDs move, folder contents included",
+        "pass": true,
+        "detail": "bad move refused (No file or folder with ID nope); Agents moved with its contents; rename on disk"
+      },
+      {
+        "name": "Archiving a folder hides it and its contents unless includeArchived; unarchiving restores them",
+        "pass": true,
+        "detail": "hidden while archived, listed with includeArchived, all back after unarchive"
+      },
+      {
+        "name": "list_resources lists open files first and marks truncated when the limit cuts it",
+        "pass": true,
+        "detail": "2 open files first; limit 2 truncated"
+      },
+      {
+        "name": "open_file opens a second tab; write_html with its fileId edits it while the first tab stays in front",
+        "pass": true,
+        "detail": "edited edac60cb-7b7e-4b4b-8868-1620db0082cb in the background; Main stayed in front; saved to disk"
+      },
+      {
+        "name": "Tabs close and reorder",
+        "pass": true,
+        "detail": "file-main, 9a0bce3f-0a9a-4e68-af8d-703ed438d0b5, edac60cb-7b7e-4b4b-8868-1620db0082cb -> 9a0bce3f-0a9a-4e68-af8d-703ed438d0b5, edac60cb-7b7e-4b4b-8868-1620db0082cb, file-main"
+      },
+      {
+        "name": "Open tabs and the active tab are restored after a restart",
+        "pass": true,
+        "detail": "3 tabs, file-main in front"
+      },
+      {
+        "name": "Files added on disk by hand are picked up",
+        "pass": true,
+        "detail": "picked up \"Dropped in\"; hidden files: .opendraw-index.json"
+      }
+    ]
   }
 }

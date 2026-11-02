@@ -202,3 +202,66 @@ Rules:
 }
 
 export type WriteToolName = keyof typeof writeTools
+
+const resourceIds = z.array(z.string()).min(1).describe('IDs of the files and folders, from list_resources.')
+const folderId = z.string().describe('ID of a folder, from list_resources.')
+
+/** Files and folders in the workspace (S-13). These run in the main process, not against one document. */
+export const resourceTools = {
+  list_resources: {
+    description:
+      'Lists files and folders in the workspace. Open files come first (`open` for a tab, `active` for the tab in front), then the most recently updated files and folders. Each item has type, id, name, parentId (omitted at the top level) and timestamps. `truncated` means the limit cut the list.',
+    inputSchema: z.object({
+      parentId: folderId.optional(),
+      includeArchived: z.boolean().optional().describe('Also list archived items, marked archived.'),
+      limit: z.number().min(1).max(200).optional().describe('Most items to return. Defaults to 50.')
+    }),
+    annotations: { readOnlyHint: true }
+  },
+  create_file: {
+    description: 'Creates a file and returns its id, name and parentId. Call open_file with the ID to work in it.',
+    inputSchema: z.object({
+      name: z.string().optional().describe('Name for the file. Defaults to "Untitled".'),
+      parentId: folderId.optional(),
+      cloneFileId: z.string().optional().describe('ID of a file to copy. The copy gets new IDs.')
+    }),
+    annotations: { readOnlyHint: false, destructiveHint: false }
+  },
+  create_folder: {
+    description: 'Creates a folder and returns its id, name and parentId. The name is trimmed and capped at 500 characters.',
+    inputSchema: z.object({
+      name: z.string().optional().describe('Name for the folder. Defaults to "Untitled project".'),
+      parentId: folderId.optional()
+    }),
+    annotations: { readOnlyHint: false, destructiveHint: false }
+  },
+  move_resources: {
+    description:
+      'Moves files and folders into a folder; a folder moves with its contents. Every ID is checked first, and if any cannot move, nothing moves. Items already in the folder are listed separately.',
+    inputSchema: z.object({ resourceIds, parentId: folderId }),
+    annotations: { readOnlyHint: false, destructiveHint: false }
+  },
+  rename_resource: {
+    description: 'Renames a file or folder. The name is trimmed and capped at 500 characters; an empty name changes nothing. Returns the stored name and the type.',
+    inputSchema: z.object({ resourceId: z.string().describe('ID of the file or folder.'), name: z.string() }),
+    annotations: { readOnlyHint: false, destructiveHint: false }
+  },
+  archive_resources: {
+    description:
+      'Archives files and folders; a folder takes its contents with it. Archived items only show in list_resources with includeArchived. All or nothing.',
+    inputSchema: z.object({ resourceIds }),
+    annotations: { readOnlyHint: false, destructiveHint: false }
+  },
+  unarchive_resources: {
+    description:
+      'Restores archived files and folders, with their contents. An item whose folder stays archived moves to the top level. All or nothing.',
+    inputSchema: z.object({ resourceIds }),
+    annotations: { readOnlyHint: false, destructiveHint: false }
+  },
+  open_file: {
+    description:
+      'Opens a file as a tab behind the one in front, by bare ID, /file/<id> path or URL. pageId applies only when the file is not already open. Returns a get_basic_info response.',
+    inputSchema: z.object({ fileId: z.string(), pageId: pageId.optional() }),
+    annotations: { readOnlyHint: false, destructiveHint: false }
+  }
+}

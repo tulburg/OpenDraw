@@ -9,7 +9,7 @@ import { createInterface } from 'node:readline'
 
 import { z } from 'zod'
 
-import { NOT_RUNNING_MESSAGE, readTools, SERVER_INSTRUCTIONS, writeTools } from '../shared/mcp/definitions'
+import { NOT_RUNNING_MESSAGE, readTools, resourceTools, SERVER_INSTRUCTIONS, writeTools } from '../shared/mcp/definitions'
 
 interface Discovery {
   url: string
@@ -70,7 +70,7 @@ function answerOffline(message: Message): Message | null {
               inputSchema: z.toJSONSchema(def.inputSchema),
               annotations: { readOnlyHint: true }
             })),
-            ...Object.entries(writeTools).map(([name, def]) => ({
+            ...Object.entries({ ...writeTools, ...resourceTools }).map(([name, def]) => ({
               name,
               description: def.description,
               inputSchema: z.toJSONSchema(def.inputSchema),

@@ -16,9 +16,10 @@ import {
 } from '@modelcontextprotocol/server'
 import { app, type BrowserWindow } from 'electron'
 
-import { readTools, SERVER_INSTRUCTIONS, writeTools } from '../../shared/mcp/definitions'
+import { readTools, resourceTools, SERVER_INSTRUCTIONS, writeTools } from '../../shared/mcp/definitions'
 import * as read from '../../shared/mcp/read-tools'
 import { requireFile, requireNode, type Snapshot, ToolError } from '../../shared/mcp/snapshot'
+import * as resources from '../resource-tools'
 import { requestRenderer } from '../rpc'
 import { computedStyles, type RenderTarget, screenshot } from './render'
 
@@ -51,10 +52,11 @@ interface ServerDeps {
 function buildServer({ getWindow, renderTarget }: ServerDeps): McpServer {
   const server = new McpServer({ name: 'opendraw', version: VERSION }, { instructions: SERVER_INSTRUCTIONS })
 
-  const snapshot = async (): Promise<Snapshot> => {
+  /** The document of an open tab: the one with `fileId`, else the one in front (S-13 Req 5). */
+  const snapshot = async (fileId?: string): Promise<Snapshot> => {
     const win = getWindow()
     if (!win) throw new ToolError('OpenDraw has no document window open. Ask the user to open a file.')
-    return requestRenderer<Snapshot>(win.webContents, 'mcp:snapshot')
+    return requestRenderer<Snapshot>(win.webContents, 'mcp:snapshot', { fileId })
   }
 
   /** Wraps a tool so expected errors come back as tool errors the agent can read. */
@@ -81,7 +83,7 @@ function buildServer({ getWindow, renderTarget }: ServerDeps): McpServer {
     server.registerTool(
       name,
       { description: def.description, inputSchema: def.inputSchema, annotations: { readOnlyHint: true } },
-      tool(async (args: any) => text((run as (s: Snapshot, a: unknown) => unknown)(await snapshot(), args)))
+      tool(async (args: any) => text((run as (s: Snapshot, a: unknown) => unknown)(await snapshot(args?.fileId), args)))
     )
   }
 
@@ -93,7 +95,7 @@ function buildServer({ getWindow, renderTarget }: ServerDeps): McpServer {
       annotations: { readOnlyHint: true }
     },
     tool(async ({ fileId, nodeIds }: { fileId: string; nodeIds: string[] }) => {
-      const snap = await snapshot()
+      const snap = await snapshot(fileId)
       requireFile(snap, fileId)
       // Group by artboard so each artboard renders once.
       const byArtboard = new Map<string, { artboard: Snapshot['document']['pages'][number]['nodes'][number]; ids: string[] }>()
@@ -119,7 +121,7 @@ function buildServer({ getWindow, renderTarget }: ServerDeps): McpServer {
       annotations: { readOnlyHint: true }
     },
     tool(async ({ fileId, nodeId, scale }: { fileId: string; nodeId: string; scale?: number }) => {
-      const snap = await snapshot()
+      const snap = await snapshot(fileId)
       requireFile(snap, fileId)
       const { artboard } = requireNode(snap, nodeId)
       const png = await screenshot(renderTarget, artboard, nodeId, scale ?? 1)
@@ -137,6 +139,27 @@ function buildServer({ getWindow, renderTarget }: ServerDeps): McpServer {
         if (!win) throw new ToolError('OpenDraw has no document window open. Ask the user to open a file.')
         return text(await requestRenderer(win.webContents, 'mcp:write', { tool: name, args }))
       })
+    )
+  }
+
+  const resourceRuns: Record<keyof typeof resourceTools, (args: any) => Promise<unknown>> = {
+    list_resources: resources.listResources,
+    create_file: (args) => resources.createFile(args, getWindow),
+    create_folder: resources.createFolder,
+    move_resources: resources.moveResources,
+    rename_resource: resources.renameResource,
+    archive_resources: (args) => resources.setArchived(args, true),
+    unarchive_resources: (args) => resources.setArchived(args, false),
+    open_file: async (args) => {
+      const id = await resources.openFile(args, getWindow)
+      return read.getBasicInfo(await snapshot(id), { fileId: id })
+    }
+  }
+  for (const [name, def] of Object.entries(resourceTools)) {
+    server.registerTool(
+      name,
+      { description: def.description, inputSchema: def.inputSchema, annotations: def.annotations },
+      tool(async (args: unknown) => text(await resourceRuns[name as keyof typeof resourceTools](args)))
     )
   }
 
