@@ -27,14 +27,14 @@ export interface DesignNode {
   exports?: ExportSetting[]
 }
 
-export const EXPORT_FORMATS = ['png', 'jpg', 'webp', 'avif', 'svg', 'pdf'] as const
+export const EXPORT_FORMATS = ['png', 'jpg', 'webp', 'svg', 'pdf'] as const
 export type ExportFormat = (typeof EXPORT_FORMATS)[number]
 
 export interface ExportSetting {
   format: ExportFormat
   /** Paper's scale notation: 1x, 2x, 0.5x, 720p (height), 512w (width) or 512h (height). */
   scale: string
-  /** JPG, WEBP and AVIF: 0-100. */
+  /** JPG and WEBP: 0-100. */
   quality?: number
 }
 

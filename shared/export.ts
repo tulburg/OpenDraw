@@ -4,7 +4,7 @@ import type { ExportFormat, ExportSetting } from './document'
 export class ExportError extends Error {}
 
 /** Formats with a quality setting. */
-export const LOSSY: ExportFormat[] = ['jpg', 'webp', 'avif']
+export const LOSSY: ExportFormat[] = ['jpg', 'webp']
 export const DEFAULT_QUALITY = 90
 export const DEFAULT_EXPORT: ExportSetting = { format: 'png', scale: '1x' }
 

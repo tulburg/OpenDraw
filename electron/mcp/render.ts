@@ -5,7 +5,7 @@ import path from 'node:path'
 import { BrowserWindow, nativeImage } from 'electron'
 
 import type { DesignNode, ExportSetting } from '../../shared/document'
-import { DEFAULT_QUALITY, ExportError, scaleFactor } from '../../shared/export'
+import { DEFAULT_QUALITY, scaleFactor } from '../../shared/export'
 import { requestRenderer } from '../rpc'
 
 let renderWindow: BrowserWindow | null = null
@@ -186,8 +186,6 @@ export async function exportNode(target: RenderTarget, artboard: DesignNode, nod
       })
       return Buffer.from(data, 'base64')
     }
-    case 'avif':
-      throw new ExportError('AVIF export is not available yet: it needs an encoder (open question on the board). Use PNG or WEBP.')
     case 'svg':
       return withArtboard(target, artboard, 1, async (win) => {
         await requestRenderer(win.webContents, 'render:isolate', { nodeId })
