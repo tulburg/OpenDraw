@@ -6,7 +6,7 @@ await server.listen()
 const url = server.resolvedUrls?.local[0]
 if (!url) throw new Error('Vite dev server did not report a URL')
 
-const build = Bun.spawnSync(['bun', 'scripts/build-electron.ts'], { stdout: 'inherit', stderr: 'inherit' })
+const build = Bun.spawnSync([process.execPath, 'scripts/build-electron.ts'], { stdout: 'inherit', stderr: 'inherit' })
 if (build.exitCode !== 0) process.exit(build.exitCode ?? 1)
 
 const electronPath = (await import('electron')).default as unknown as string
