@@ -336,3 +336,8 @@
 {"at":"2026-11-02T14:21:22.979Z","actor":"claude","action":"comment","card":"S-35","detail":"Reqs 1-6 done and verified: tests/shapes.test.ts 12/12 (0e52523). Also fixed while testing: corner-radius drag reverting on screen (a7d65c4), percentage radii (8cddf3d), a drag inside the selection moves the selection (c4caf12), a selected frame outlines its children (d2a9a81). Note: tests/interactions.test.ts failed intermittently on the final tree; per the user, old suites are no longer run, so that is unexamined."}
 {"at":"2026-11-02T14:21:23.015Z","actor":"claude","action":"status","card":"S-35","detail":"active -> done"}
 {"at":"2026-11-02T14:22:56.020Z","actor":"claude","action":"draft_spec","card":"S-40","detail":"Artboards behave like Figma frames, not shapes"}
+{"at":"2026-11-02T14:23:01.236Z","actor":"user","action":"status","card":"S-40","detail":"draft -> approved"}
+{"at":"2026-11-02T14:23:02.298Z","actor":"user","action":"status","card":"S-40","detail":"approved -> queued"}
+{"at":"2026-11-02T14:23:21.261Z","actor":"claude","action":"status","card":"S-40","detail":"queued -> active"}
+{"at":"2026-11-02T14:24:39.348Z","actor":"claude","action":"comment","card":"S-40","detail":"Reqs 1-5 done and verified: tests/artboards.test.ts 4/4, tests/shapes.test.ts 12/12 (commit above). A drag inside the current selection bounds still moves the selection, as in Figma, even when it starts on the artboard."}
+{"at":"2026-11-02T14:24:39.383Z","actor":"claude","action":"status","card":"S-40","detail":"active -> done"}
