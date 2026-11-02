@@ -61,6 +61,11 @@ export function tokenStyle(tokens: Token[] | undefined): CSSStyle {
   return style
 }
 
+/** An artboard with the file's tokens set on it, as the canvas draws it. */
+export function withTokens(artboard: DesignNode, tokens: Token[] | undefined): DesignNode {
+  return { ...artboard, style: { ...tokenStyle(tokens), ...artboard.style } }
+}
+
 /** The token a value refers to when it is exactly `var(--name)`. */
 export function tokenRef(value: string | number | undefined): string | null {
   return typeof value === 'string' ? (value.trim().match(ALIAS)?.[1] ?? null) : null

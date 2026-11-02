@@ -16,6 +16,8 @@ interface AppState {
   /** Last viewport per file path and page. */
   viewports: Record<string, { pageId: string; viewport: Viewport }>
   window?: { x: number; y: number; width: number; height: number }
+  /** The folder the user picked for exports (S-15). */
+  exportDir?: string
 }
 
 export function workspaceDir(): string {

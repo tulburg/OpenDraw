@@ -16,21 +16,21 @@ import {
 } from '@modelcontextprotocol/server'
 import { app, type BrowserWindow } from 'electron'
 
-import { readTools, resourceTools, SERVER_INSTRUCTIONS, writeTools } from '../../shared/mcp/definitions'
+import { exportTools, readTools, resourceTools, SERVER_INSTRUCTIONS, writeTools } from '../../shared/mcp/definitions'
 import * as read from '../../shared/mcp/read-tools'
-import { requireFile, requireNode, type Snapshot, ToolError } from '../../shared/mcp/snapshot'
-import { tokenStyle } from '../../shared/tokens'
+import { layoutOf, requireFile, requireNode, requirePage, type Snapshot, ToolError, walk } from '../../shared/mcp/snapshot'
+import { withTokens as withFileTokens } from '../../shared/tokens'
+import { type ExportItem, runCombinedPDF, runExports } from '../export'
 import * as resources from '../resource-tools'
+import { fillImage } from './fill-image'
 import { requestRenderer } from '../rpc'
 import { computedStyles, type RenderTarget, screenshot } from './render'
 
 export const MCP_PATH = '/mcp'
 
 /** The artboard with the file's tokens set on it, as the canvas draws it (S-14). */
-const withTokens = (snap: Snapshot, artboard: Snapshot['document']['pages'][number]['nodes'][number]) => ({
-  ...artboard,
-  style: { ...tokenStyle(snap.document.tokens), ...artboard.style }
-})
+const withTokens = (snap: Snapshot, artboard: Snapshot['document']['pages'][number]['nodes'][number]) =>
+  withFileTokens(artboard, snap.document.tokens)
 const VERSION = '0.1.0'
 
 export interface DiscoveryInfo {
@@ -149,6 +149,73 @@ function buildServer({ getWindow, renderTarget }: ServerDeps): McpServer {
       })
     )
   }
+
+  /** A layer as an export item: its artboard with tokens, its name and settings. */
+  const exportItem = (snap: Snapshot, id: string): ExportItem => {
+    const { node, artboard } = requireNode(snap, id)
+    return { artboard: withTokens(snap, artboard), nodeId: node.id, name: node.name, settings: node.exports }
+  }
+
+  server.registerTool(
+    'export',
+    { description: exportTools.export.description, inputSchema: exportTools.export.inputSchema, annotations: exportTools.export.annotations },
+    tool(async (args: { fileId: string; nodes: string[] | 'nodes-with-exports-only'; pageId?: string; type?: string }) => {
+      if (args.type === 'video') throw new ToolError('Video export is not supported. Use type "image".')
+      const snap = await snapshot(args.fileId)
+      requireFile(snap, args.fileId)
+      let ids: string[]
+      if (args.nodes === 'nodes-with-exports-only') {
+        ids = []
+        walk(requirePage(snap, args.pageId).nodes, (n) => n.exports?.length && ids.push(n.id))
+        if (ids.length === 0) throw new ToolError('No layer on this page has export settings.')
+      } else ids = args.nodes
+      const items = ids.map((id) => exportItem(snap, id))
+      const files = await runExports(renderTarget, items)
+      return text({ exports: files })
+    })
+  )
+
+  server.registerTool(
+    'export_combined_pdf',
+    {
+      description: exportTools.export_combined_pdf.description,
+      inputSchema: exportTools.export_combined_pdf.inputSchema,
+      annotations: exportTools.export_combined_pdf.annotations
+    },
+    tool(async ({ fileId, nodeIds }: { fileId: string; nodeIds: string[] }) => {
+      const snap = await snapshot(fileId)
+      requireFile(snap, fileId)
+      // Canvas order: top to bottom, then left to right. Unmeasured layers fall back to their artboard's position.
+      const position = (id: string) => {
+        const l = layoutOf(snap, id)
+        if (l.worldX !== null && l.worldY !== null) return { x: l.worldX, y: l.worldY }
+        const { artboard } = requireNode(snap, id)
+        return { x: parseFloat(String(artboard.style.left)) || 0, y: parseFloat(String(artboard.style.top)) || 0 }
+      }
+      const ordered = [...nodeIds].sort((a, b) => {
+        const pa = position(a)
+        const pb = position(b)
+        return pa.y - pb.y || pa.x - pb.x
+      })
+      const path = await runCombinedPDF(renderTarget, ordered.map((id) => exportItem(snap, id)), snap.document.name)
+      return text({ path, pages: ordered })
+    })
+  )
+
+  server.registerTool(
+    'get_fill_image',
+    {
+      description: exportTools.get_fill_image.description,
+      inputSchema: exportTools.get_fill_image.inputSchema,
+      annotations: { readOnlyHint: true }
+    },
+    tool(async ({ fileId, nodeId }: { fileId: string; nodeId: string }) => {
+      const snap = await snapshot(fileId)
+      requireFile(snap, fileId)
+      const { node } = requireNode(snap, nodeId)
+      return fillImage(node)
+    })
+  )
 
   const resourceRuns: Record<keyof typeof resourceTools, (args: any) => Promise<unknown>> = {
     list_resources: resources.listResources,

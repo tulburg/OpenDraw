@@ -7,6 +7,7 @@ import { type DocumentStore, useStore } from '../document/store'
 import type { StyleUpdate } from '../document/styles'
 import { findNode } from '../document/tree'
 import { documentColors, documentFonts, kebab, MIXED, parseRawCSS, rawCSS, sharedValue } from './css-values'
+import { ExportSection } from './ExportSection'
 import { ColorField, FontField, NumberField, SelectField, ShadowField, type StyleEditor, TextField } from './fields'
 
 interface StylesPanelProps {
@@ -349,6 +350,14 @@ export function StylesPanel({ store, nodes, selection, measure, onPreview }: Sty
 
       <Group title="CSS">
         <RawCSS editor={editor} />
+      </Group>
+
+      <Group title="Export">
+        {selected.length === 1 ? (
+          <ExportSection store={store} node={selected[0]} />
+        ) : (
+          <div className="field-note">Select one layer to export it</div>
+        )}
       </Group>
     </aside>
   )

@@ -2,7 +2,7 @@
 // undo step, and listeners re-render and autosave from the committed state.
 import { useSyncExternalStore } from 'react'
 
-import { type DesignDocument, type DesignNode, newId, type Page, type PageIcon, type TextSpan, TOKEN_TYPES } from '../../shared/document'
+import { type DesignDocument, type DesignNode, type ExportSetting, newId, type Page, type PageIcon, type TextSpan, TOKEN_TYPES } from '../../shared/document'
 import { arrangePages, nextPageName, PageError } from '../../shared/pages'
 import { type CreateEntry, createTokens, type SetEntry, setTokens, type TokenResult } from '../../shared/tokens'
 import { clearFromSpans } from './richtext'
@@ -100,6 +100,10 @@ export class Transaction {
 
   rename(id: string, name: string) {
     this.update(id, (page) => tree.rename(page, id, name))
+  }
+
+  setExports(id: string, exports: ExportSetting[]) {
+    this.update(id, (page) => tree.setExports(page, id, exports))
   }
 
   moveNodes(ids: string[], parentId: string, index?: number) {

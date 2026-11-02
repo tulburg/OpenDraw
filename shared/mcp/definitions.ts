@@ -351,3 +351,30 @@ export const resourceTools = {
     annotations: { readOnlyHint: false, destructiveHint: false }
   }
 }
+
+/** Export tools (S-15). They render in the main process and write files. */
+export const exportTools = {
+  export: {
+    description:
+      'Exports layers as files, with each layer\'s own export settings (a 1x PNG for a layer without any), and returns each file\'s path. Pass node IDs, or "nodes-with-exports-only" for every layer on the page that has export settings. Do not change export settings unless the user asks. Only type "image" is supported.',
+    inputSchema: z.object({
+      fileId: requiredFileId,
+      nodes: z.union([z.array(z.string()).min(1), z.literal('nodes-with-exports-only')]),
+      pageId: pageId.optional(),
+      type: z.enum(['image', 'video']).optional()
+    }),
+    annotations: { readOnlyHint: false, destructiveHint: false }
+  },
+  export_combined_pdf: {
+    description:
+      'Exports layers into one PDF, one page per layer, each page the layer\'s size. Pages are ordered top to bottom, then left to right on the canvas. Returns the file path.',
+    inputSchema: z.object({ fileId: requiredFileId, nodeIds: z.array(z.string()).min(1) }),
+    annotations: { readOnlyHint: false, destructiveHint: false }
+  },
+  get_fill_image: {
+    description:
+      'Returns the picture of an image layer (or a layer with a background image) as base64 JPEG, scaled to at most 1568 px on the long side, with the source URL. SVG layers have no fill image; read them with get_jsx.',
+    inputSchema: z.object({ fileId: requiredFileId, nodeId }),
+    annotations: { readOnlyHint: true }
+  }
+}

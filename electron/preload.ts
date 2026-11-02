@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
 import type { DesignDocument, OpenedDocument, Viewport } from '../shared/document'
+import type { ExportedFile, ExportItem } from './export'
 import type { ListedResource } from './resource-tools'
 
 type MainRequestHandler = (payload: unknown) => unknown | Promise<unknown>
@@ -40,6 +41,12 @@ const api = {
     ipcRenderer.invoke('workspace:archive', args, archived),
   /** A file's saved document, for thumbnails in the file browser. */
   readFile: (id: string): Promise<DesignDocument> => ipcRenderer.invoke('workspace:read-file', id),
+  /** The export folder the user picked, or null before they pick one (S-15). */
+  exportDir: (): Promise<string | null> => ipcRenderer.invoke('export:dir'),
+  chooseExportDir: (): Promise<string | null> => ipcRenderer.invoke('export:choose-dir'),
+  runExport: (items: ExportItem[]): Promise<{ files?: ExportedFile[]; cancelled?: boolean }> => ipcRenderer.invoke('export:run', items),
+  /** A 1x PNG of the layer alone, base64. */
+  exportPreview: (item: ExportItem): Promise<string> => ipcRenderer.invoke('export:preview', item),
   /** A file was renamed or moved on disk; its tab saves to the new path. */
   onFileMoved: (handler: (id: string, path: string) => void): (() => void) => {
     const listener = (_event: Electron.IpcRendererEvent, id: string, path: string) => handler(id, path)
@@ -75,6 +82,7 @@ if (process.env.OPENDRAW_TEST) {
     window: () => ipcRenderer.invoke('test:window'),
     setSize: (width: number, height: number) => ipcRenderer.invoke('test:set-size', width, height),
     setPosition: (x: number, y: number) => ipcRenderer.invoke('test:set-position', x, y),
+    setExportDir: (dir: string) => ipcRenderer.invoke('test:set-export-dir', dir),
     quit: () => ipcRenderer.invoke('test:quit')
   })
 }

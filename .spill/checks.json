@@ -579,5 +579,46 @@
         "detail": "saved --color-brand, --color-accent, --space-4, --weight-bold, --radius-1"
       }
     ]
+  },
+  "S-15": {
+    "at": "2026-11-02T04:04:09.890Z",
+    "running": false,
+    "results": [
+      {
+        "name": "Panel: a 2x PNG and a JPG 512w entry export Card@2x.png at twice the size and Card@512w.jpg 512 px wide",
+        "pass": true,
+        "detail": "Card@2x.png 400x240 (corner alpha 0), Card@512w.jpg 512x307"
+      },
+      {
+        "name": "Undo removes an added entry",
+        "pass": true,
+        "detail": "3 entries, 2 after undo"
+      },
+      {
+        "name": "A PDF export of an artboard has its page size and text as text",
+        "pass": true,
+        "detail": "Desktop.pdf 800x600 with fonts; Desktop.svg keeps text"
+      },
+      {
+        "name": "export with \"nodes-with-exports-only\" exports exactly the layers with settings; IDs without settings give a 1x PNG",
+        "pass": true,
+        "detail": "4 files for card, desktop; Top.png 400x200"
+      },
+      {
+        "name": "export_combined_pdf with three artboards writes a 3-page PDF in canvas order",
+        "pass": true,
+        "detail": "Export.pdf: 400x200,500x251,300x300"
+      },
+      {
+        "name": "get_fill_image returns JPEG data for an image layer and a message for an SVG layer",
+        "pass": true,
+        "detail": "This layer is an SVG and has no fill image. Read its markup with get_jsx. | This layer has no image fill."
+      },
+      {
+        "name": "Export settings survive a restart",
+        "pass": true,
+        "detail": "card jpg 512w, png 2x"
+      }
+    ]
   }
 }

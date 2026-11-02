@@ -1,11 +1,13 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { app, BrowserWindow, ipcMain, Menu, screen } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Menu, screen } from 'electron'
 
 import type { DesignDocument, Viewport } from '../shared/document'
 import { closeRenderWindow, renderTargetFor } from './mcp/render'
 import { startMcpServer } from './mcp/server'
+import { exportDir, type ExportItem, runExports } from './export'
+import { exportNode } from './mcp/render'
 import * as resources from './resource-tools'
 import {
   fileMoved,
@@ -176,6 +178,33 @@ ipcMain.handle('workspace:move', (_event, args) => resources.moveResources(args)
 ipcMain.handle('workspace:rename', (_event, args) => resources.renameResource(args))
 ipcMain.handle('workspace:archive', (_event, args, archived: boolean) => resources.setArchived(args, archived))
 ipcMain.handle('workspace:read-file', (_event, id: string) => resources.readSavedDocument(id))
+// Exports from the styles panel (S-15 Req 2): to the folder the user picked, asking the first time.
+const exportTarget = renderTargetFor(here)
+async function chooseExportDir(win: BrowserWindow | null): Promise<string | null> {
+  const options: Electron.OpenDialogOptions = {
+    title: 'Export to folder',
+    defaultPath: await exportDir(),
+    properties: ['openDirectory', 'createDirectory']
+  }
+  const result = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options)
+  if (result.canceled || !result.filePaths[0]) return null
+  const dir = result.filePaths[0]
+  await updateState((s) => {
+    s.exportDir = dir
+  })
+  return dir
+}
+ipcMain.handle('export:dir', async () => ((await readState()).exportDir ? exportDir() : null))
+ipcMain.handle('export:choose-dir', (event) => chooseExportDir(BrowserWindow.fromWebContents(event.sender)))
+ipcMain.handle('export:run', async (event, items: ExportItem[]) => {
+  const dir = (await readState()).exportDir ?? (await chooseExportDir(BrowserWindow.fromWebContents(event.sender)))
+  if (!dir) return { cancelled: true }
+  return { files: await runExports(exportTarget, items, dir) }
+})
+ipcMain.handle('export:preview', async (_event, item: ExportItem) =>
+  (await exportNode(exportTarget, item.artboard, item.nodeId, { format: 'png', scale: '1x' })).toString('base64')
+)
+
 workspace().onFileMoved = (id, from, to) => {
   fileMoved(from, to)
   mainWindow?.webContents.send('workspace:file-moved', id, to)
@@ -206,6 +235,11 @@ if (process.env.OPENDRAW_TEST) {
   ipcMain.handle('test:set-position', (event, x: number, y: number) => {
     BrowserWindow.fromWebContents(event.sender)!.setPosition(x, y)
   })
+  ipcMain.handle('test:set-export-dir', (_event, dir: string) =>
+    updateState((s) => {
+      s.exportDir = dir
+    })
+  )
   ipcMain.handle('test:quit', () => {
     setImmediate(() => app.quit())
   })
@@ -215,7 +249,7 @@ app.whenReady().then(async () => {
   buildMenu()
   await createWindow()
   try {
-    const server = await startMcpServer({ getWindow: () => mainWindow, renderTarget: renderTargetFor(here) })
+    const server = await startMcpServer({ getWindow: () => mainWindow, renderTarget: exportTarget })
     stopMcpServer = server.stop
   } catch (err) {
     console.error('[mcp] could not start the MCP server', err)

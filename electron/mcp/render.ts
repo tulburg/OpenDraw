@@ -4,7 +4,8 @@ import path from 'node:path'
 
 import { BrowserWindow, nativeImage } from 'electron'
 
-import type { DesignNode } from '../../shared/document'
+import type { DesignNode, ExportSetting } from '../../shared/document'
+import { DEFAULT_QUALITY, ExportError, scaleFactor } from '../../shared/export'
 import { requestRenderer } from '../rpc'
 
 let renderWindow: BrowserWindow | null = null
@@ -36,7 +37,9 @@ function load(target: RenderTarget): Promise<BrowserWindow> {
         // zoom used for scaled screenshots would also zoom the editor window.
         partition: 'opendraw-render',
         backgroundThrottling: false
-      }
+      },
+      // Transparent, so exported layers keep their transparency (S-15 Req 3).
+      backgroundColor: '#00000000'
     })
     win.webContents.setFrameRate(60)
     if (target.devServer) await win.loadURL(`${target.devServer}#render`)
@@ -126,6 +129,89 @@ export async function computedStyles(
       return result
     })()`)
   )
+}
+
+interface Rect {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+const nextPaint = (win: BrowserWindow) =>
+  win.webContents.executeJavaScript('new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))')
+
+/** Captures `nodeId` alone (S-15): drawn at 1x to measure it, then at the export scale. */
+async function captureIsolated(target: RenderTarget, artboard: DesignNode, nodeId: string, scale: string) {
+  return withArtboard(target, artboard, 1, async (win) => {
+    const box = await requestRenderer<Rect>(win.webContents, 'render:isolate', { nodeId })
+    const factor = scaleFactor(scale, box.width, box.height)
+    const width = Number.parseFloat(String(artboard.style.width)) || 1
+    const height = Number.parseFloat(String(artboard.style.height)) || 1
+    if (factor !== 1) {
+      win.webContents.setZoomFactor(factor)
+      win.setContentSize(Math.ceil(Math.max(width, box.x + box.width) * factor), Math.ceil(Math.max(height, box.y + box.height) * factor))
+      await nextPaint(win)
+      await nextPaint(win)
+    }
+    const rect = {
+      x: Math.round(box.x * factor),
+      y: Math.round(box.y * factor),
+      width: Math.max(1, Math.round(box.width * factor)),
+      height: Math.max(1, Math.round(box.height * factor))
+    }
+    let image = await win.webContents.capturePage(rect)
+    const size = image.getSize()
+    if (size.width !== rect.width || size.height !== rect.height) {
+      image = nativeImage.createFromBuffer(image.resize({ width: rect.width, height: rect.height, quality: 'best' }).toPNG())
+    }
+    return { png: image.toPNG(), win }
+  })
+}
+
+const MIME: Record<string, string> = { jpg: 'image/jpeg', webp: 'image/webp' }
+
+/** One layer exported with one setting, as file bytes. */
+export async function exportNode(target: RenderTarget, artboard: DesignNode, nodeId: string, setting: ExportSetting): Promise<Buffer> {
+  switch (setting.format) {
+    case 'png':
+      return (await captureIsolated(target, artboard, nodeId, setting.scale)).png
+    case 'jpg':
+    case 'webp': {
+      const { png, win } = await captureIsolated(target, artboard, nodeId, setting.scale)
+      const data = await requestRenderer<string>(win.webContents, 'render:encode', {
+        png: png.toString('base64'),
+        type: MIME[setting.format],
+        quality: setting.quality ?? DEFAULT_QUALITY
+      })
+      return Buffer.from(data, 'base64')
+    }
+    case 'avif':
+      throw new ExportError('AVIF export is not available yet: it needs an encoder (open question on the board). Use PNG or WEBP.')
+    case 'svg':
+      return withArtboard(target, artboard, 1, async (win) => {
+        await requestRenderer(win.webContents, 'render:isolate', { nodeId })
+        return Buffer.from(await requestRenderer<string>(win.webContents, 'render:svg', { nodeId }), 'utf8')
+      })
+    case 'pdf':
+      return printPDF(target, [{ artboard, nodeId }])
+  }
+}
+
+/** A vector PDF with one page per layer, each page the layer's size (S-15 Req 4 and 6). */
+export function printPDF(target: RenderTarget, items: { artboard: DesignNode; nodeId: string }[]): Promise<Buffer> {
+  const run = queue.then(async () => {
+    const win = await load(target)
+    win.webContents.setZoomFactor(1)
+    await requestRenderer(win.webContents, 'render:print', { items })
+    return win.webContents.printToPDF({
+      preferCSSPageSize: true,
+      printBackground: true,
+      margins: { top: 0, bottom: 0, left: 0, right: 0 }
+    })
+  })
+  queue = run.catch(() => undefined)
+  return run
 }
 
 /** Escapes a node ID for a double-quoted CSS attribute selector inside generated script. */

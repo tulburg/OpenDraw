@@ -23,6 +23,19 @@ export interface DesignNode {
   src?: string
   /** SVG nodes: the sanitized <svg> markup, drawn to fill the node. */
   svg?: string
+  /** Export settings (S-15): one file per entry when the layer is exported. */
+  exports?: ExportSetting[]
+}
+
+export const EXPORT_FORMATS = ['png', 'jpg', 'webp', 'avif', 'svg', 'pdf'] as const
+export type ExportFormat = (typeof EXPORT_FORMATS)[number]
+
+export interface ExportSetting {
+  format: ExportFormat
+  /** Paper's scale notation: 1x, 2x, 0.5x, 720p (height), 512w (width) or 512h (height). */
+  scale: string
+  /** JPG, WEBP and AVIF: 0-100. */
+  quality?: number
 }
 
 /** Paper's page icons (S-12 Req 4); a page without one shows the default. */

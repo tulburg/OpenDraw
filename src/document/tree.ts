@@ -1,6 +1,6 @@
 // Immutable edits on a page's node tree. Every function returns a new page and copies only the
 // nodes on the path to what changed, so undo snapshots share everything else.
-import type { DesignNode, Page, TextSpan } from '../../shared/document'
+import type { DesignNode, ExportSetting, Page, TextSpan } from '../../shared/document'
 import { newId } from '../../shared/document'
 import { normalizeSpans, plainText } from './richtext'
 
@@ -115,6 +115,14 @@ export function setRichText(page: Page, id: string, spans: TextSpan[]): Page {
     const { spans: _spans, ...plain } = node
     const text = plainText(spans)
     return normalized ? { ...plain, text, spans: normalized } : { ...plain, text }
+  })
+}
+
+/** Sets a layer's export settings; an empty list removes them. */
+export function setExports(page: Page, id: string, exports: ExportSetting[]): Page {
+  return withNode(page, id, (node) => {
+    const { exports: _exports, ...rest } = node
+    return exports.length > 0 ? { ...rest, exports } : rest
   })
 }
 
