@@ -247,6 +247,21 @@ try {
     return `on: order ${order}, 12 px gaps; off: ${after.map((b) => `${b.x},${b.y}`).join(' / ')} unchanged`
   })
 
+  await check('A selected frame outlines each of its children; an artboard does not', async () => {
+    await app.eval(`window.opendrawStore.select(['Box']), true`)
+    await Bun.sleep(100)
+    const outlines = await app.eval<{ x: number; y: number; w: number; h: number }[]>(`[...document.querySelectorAll('.child-outline')].map((el) => { const r = el.getBoundingClientRect(); return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) } })`)
+    const layers = await app.eval<{ x: number; y: number; w: number; h: number }[]>(`['c', 'a', 'b'].map((id) => { const r = document.querySelector('.canvas-world [data-node-id="' + id + '"]').getBoundingClientRect(); return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) } })`)
+    const sorted = (list: typeof layers) => JSON.stringify([...list].sort((p, q) => p.x - q.x || p.y - q.y))
+    expect(outlines.length === 3, `${outlines.length} outlines`)
+    expect(sorted(outlines) === sorted(layers), `outlines ${sorted(outlines)} layers ${sorted(layers)}`)
+    await app.eval(`window.opendrawStore.select(['Holder']), true`)
+    await Bun.sleep(100)
+    const onArtboard = await app.eval<number>(`document.querySelectorAll('.child-outline').length`)
+    expect(onArtboard === 0, `${onArtboard} outlines on an artboard`)
+    return `3 outlines on the children of Box, matching their boxes; none for an artboard`
+  })
+
   await check('write_html with a flex container keeps display: flex and its children unpositioned', async () => {
     const written = await client.call('write_html', {
       fileId,

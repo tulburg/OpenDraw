@@ -1,3 +1,5 @@
+// Parts copied from doop (https://github.com/kgoedecke/doop), Copyright (c) Kevin Goedecke and
+// contributors. Licensed under the GNU Affero General Public License v3.0; see LICENSE-AGPL.
 // Drawing tools (S-9): what each tool creates, written as plain CSS on the new layer.
 import { type CSSStyle, type DesignNode, newId } from '../../shared/document'
 import { sanitizeSvg } from '../document/media'

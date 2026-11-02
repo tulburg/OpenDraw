@@ -3,13 +3,14 @@ Copyright (c) OpenDraw contributors. OpenDraw's own files are licensed under the
 
 This product includes code copied and adapted from doop (https://github.com/kgoedecke/doop),
 Copyright (c) Kevin Goedecke and contributors, licensed under the GNU Affero General Public
-License v3.0 (LICENSE-AGPL). Doop's files carry no header of their own, so each copied file starts with this one:
+License v3.0 (LICENSE-AGPL). Doop's files carry no header of their own, so each file with copied code starts with this one:
 
-  // Copied from doop (https://github.com/kgoedecke/doop), Copyright (c) Kevin Goedecke and
+  // Parts copied from doop (https://github.com/kgoedecke/doop), Copyright (c) Kevin Goedecke and
   // contributors. Licensed under the GNU Affero General Public License v3.0; see LICENSE-AGPL.
 
 Because these files are AGPL-3.0, OpenDraw as a whole is distributed under AGPL-3.0.
 
 Files copied or adapted from doop (doop commit a3749d9):
 
-(none yet)
+- src/canvas/tools.ts: the rectangle and circle fill and click size (doop src/lib/drawing.ts)
+- src/canvas/Canvas.tsx: circles stay round while drawn (doop src/lib/drawing.ts, drawingBounds)

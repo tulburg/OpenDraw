@@ -1,3 +1,5 @@
+// Parts copied from doop (https://github.com/kgoedecke/doop), Copyright (c) Kevin Goedecke and
+// contributors. Licensed under the GNU Affero General Public License v3.0; see LICENSE-AGPL.
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
 import type { CSSStyle, DesignNode, Viewport } from '../../shared/document'
@@ -965,6 +967,7 @@ export function Canvas({
   const [spacing, setSpacing] = useState<SpacingMarker[]>([])
   const [handleLabel, setHandleLabel] = useState<{ x: number; y: number; text: string } | null>(null)
   const [workingRects, setWorkingRects] = useState<{ id: string; rect: Rect }[]>([])
+  const [childFrames, setChildFrames] = useState<{ id: string; frame: ReturnType<typeof frameOf> }[]>([])
   useLayoutEffect(() => {
     const canvas = ref.current!
     const outer = canvas.getBoundingClientRect()
@@ -979,6 +982,15 @@ export function Canvas({
     const singleEl = selection.length === 1 ? nodeElement(canvas, selection[0]) : null
     const singleNode = singleEl ? findNode(nodes, selection[0]) : null
     setHandleInfo(singleEl && singleNode ? handleInfoOf(singleEl, singleNode) : null)
+    // A selected frame outlines its children, so it is clear they move with it.
+    setChildFrames(
+      singleNode?.type === 'frame'
+        ? singleNode.children.flatMap((child) => {
+            const el = nodeElement(canvas, child.id)
+            return el ? [{ id: child.id, frame: frameOf(el, outer, zoom) }] : []
+          })
+        : []
+    )
     const screenRect = (id: string): Rect | null => {
       const el = nodeElement(canvas, id)
       if (!el) return null
@@ -1094,6 +1106,20 @@ export function Canvas({
           >
             <span className="working-label">Agent working</span>
           </div>
+        ))}
+        {childFrames.map(({ id, frame }) => (
+          <div
+            key={id}
+            className="child-outline"
+            data-child-of={selection[0]}
+            style={{
+              left: frame.cx - frame.width / 2,
+              top: frame.cy - frame.height / 2,
+              width: frame.width,
+              height: frame.height,
+              transform: frame.angle ? `rotate(${frame.angle}deg)` : undefined
+            }}
+          />
         ))}
         {hoverFrame && !dragging && (
           <div

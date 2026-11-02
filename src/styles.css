@@ -546,6 +546,13 @@ body {
   opacity: 0.6;
 }
 
+.child-outline {
+  position: absolute;
+  border: 1px solid var(--accent);
+  opacity: 0.45;
+  pointer-events: none;
+}
+
 .resize-handle {
   position: absolute;
   width: 8px;
