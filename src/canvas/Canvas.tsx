@@ -26,6 +26,7 @@ import {
 } from './handles'
 import { type Guide, guidesForBox, snapMove, snapValue, type SpacingMarker, unionRect } from './snap'
 import { CommentLayer, layerOrigin, type Pin } from './Comments'
+import { LayerMenu } from '../panels/LayerMenu'
 import { Toolbar } from './Toolbar'
 import {
   containerOn,
@@ -191,6 +192,8 @@ export function Canvas({
   }, [selection, editingId])
   const [insertLine, setInsertLine] = useState<Rect | null>(null)
   const [commentDraft, setCommentDraft] = useState<Pin | null>(null)
+  const [layerMenu, setLayerMenu] = useState<{ x: number; y: number } | null>(null)
+  const closeLayerMenu = useCallback(() => setLayerMenu(null), [])
   const [tool, setToolState] = useState<Tool>('select')
   const toolRef = useRef<Tool>('select')
   const setTool = useCallback((next: Tool) => {
@@ -910,6 +913,14 @@ export function Canvas({
       className="canvas"
       data-panning={gesture?.kind === 'pan' ? 'active' : spaceHeld || tool === 'hand' ? 'ready' : undefined}
       data-tool={tool}
+      onContextMenu={(event) => {
+        // Right-click picks the layer under the cursor unless it is already selected (S-19 Req 6).
+        event.preventDefault()
+        const id = pick(event.target, false)
+        if (!id) return
+        if (!store.getState().selection.includes(id)) store.select([id])
+        setLayerMenu({ x: event.clientX, y: event.clientY })
+      }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -1061,6 +1072,7 @@ export function Canvas({
         )}
       </div>
       <Toolbar tool={tool} onSelect={setTool} />
+      {layerMenu && <LayerMenu store={store} x={layerMenu.x} y={layerMenu.y} onClose={closeLayerMenu} />}
       <input
         ref={imageInput}
         type="file"

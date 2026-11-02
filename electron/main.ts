@@ -51,6 +51,34 @@ async function restoredBounds() {
 }
 
 /** Sends an edit command to the focused window's renderer, which decides between document and text undo. */
+const ARRANGE_ITEMS: ({ command: string; label: string; accelerator?: string } | null)[] = [
+  { command: 'wrap', label: 'Wrap in Frame', accelerator: 'CmdOrCtrl+Alt+G' },
+  { command: 'unwrap', label: 'Unwrap', accelerator: 'CmdOrCtrl+Shift+G' },
+  null,
+  { command: 'align-left', label: 'Align Left' },
+  { command: 'align-center', label: 'Align Center' },
+  { command: 'align-right', label: 'Align Right' },
+  { command: 'align-top', label: 'Align Top' },
+  { command: 'align-middle', label: 'Align Middle' },
+  { command: 'align-bottom', label: 'Align Bottom' },
+  null,
+  { command: 'distribute-horizontal', label: 'Distribute Horizontally' },
+  { command: 'distribute-vertical', label: 'Distribute Vertically' },
+  null,
+  { command: 'bring-to-front', label: 'Bring to Front', accelerator: 'CmdOrCtrl+Shift+]' },
+  { command: 'bring-forward', label: 'Bring Forward', accelerator: 'CmdOrCtrl+]' },
+  { command: 'send-backward', label: 'Send Backward', accelerator: 'CmdOrCtrl+[' },
+  { command: 'send-to-back', label: 'Send to Back', accelerator: 'CmdOrCtrl+Shift+[' }
+]
+
+ipcMain.on('arrange:state', (_event, state: Record<string, boolean>) => {
+  const menu = Menu.getApplicationMenu()
+  for (const [command, enabled] of Object.entries(state)) {
+    const item = menu?.getMenuItemById(`arrange-${command}`)
+    if (item) item.enabled = enabled
+  }
+})
+
 function sendEdit(command: 'undo' | 'redo') {
   BrowserWindow.getFocusedWindow()?.webContents.send('edit:command', command)
 }
@@ -73,6 +101,21 @@ function buildMenu() {
         { role: 'paste' },
         { role: 'selectAll' }
       ]
+    },
+    {
+      label: 'Arrange',
+      // Shortcuts show here but reach the renderer, which runs them on the selection.
+      submenu: ARRANGE_ITEMS.map((item) =>
+        item === null
+          ? { type: 'separator' as const }
+          : {
+              id: `arrange-${item.command}`,
+              label: item.label,
+              enabled: false,
+              ...(item.accelerator ? { accelerator: item.accelerator, registerAccelerator: false } : {}),
+              click: () => BrowserWindow.getFocusedWindow()?.webContents.send('arrange:command', item.command)
+            }
+      )
     },
     {
       label: 'View',

@@ -728,5 +728,41 @@
         "detail": "duplicate 61441082, wrapped into 2, HTML 210 chars, deleted footer"
       }
     ]
+  },
+  "S-19": {
+    "at": "2026-11-02T04:54:55.367Z",
+    "running": false,
+    "results": [
+      {
+        "name": "Cmd+Opt+G wraps two flex children in a frame in their place; the artboard looks the same",
+        "pass": true,
+        "detail": "frame {\"display\":\"flex\",\"flexDirection\":\"column\",\"gap\":\"16px\"}; screenshot unchanged"
+      },
+      {
+        "name": "Wrapping two absolutely positioned layers gives a frame at their combined bounds; each keeps its canvas position",
+        "pass": true,
+        "detail": "{\"position\":\"absolute\",\"left\":\"10px\",\"top\":\"10px\",\"width\":\"170px\",\"height\":\"90px\"}"
+      },
+      {
+        "name": "Unwrapping that frame restores the structure and positions",
+        "pass": true,
+        "detail": "stage p1,p2,p3"
+      },
+      {
+        "name": "Aligning three positioned layers left gives the same left; distributing gives equal gaps (from the canvas menu)",
+        "pass": true,
+        "detail": "aligned to 10px; gaps 80,80"
+      },
+      {
+        "name": "One flex child aligns with align-self; the other axis explains why it cannot",
+        "pass": true,
+        "detail": "In a flex row, horizontal alignment comes from the parent's justify-content"
+      },
+      {
+        "name": "Bring to front and send to back change sibling order; every command undoes in one step",
+        "pass": true,
+        "detail": "front p2,p3,p1, back p3,p2,p1"
+      }
+    ]
   }
 }

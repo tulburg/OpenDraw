@@ -3,12 +3,14 @@ import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } fro
 import type { CSSStyle, OpenedDocument, Viewport } from '../shared/document'
 import { Canvas } from './canvas/Canvas'
 import { familiesIn } from '../shared/fonts'
+import { type ArrangeCommand, arrangeShortcut, arrangeState, runArrange } from './canvas/arrange'
 import { TokensContext } from './canvas/NodeView'
 import { ensureFonts } from './fonts/loader'
 import { tokenStyle } from '../shared/tokens'
 import { fitViewport, nextZoomStep, zoomAt } from './canvas/viewport'
 import { type DocumentStore, useStore } from './document/store'
 import { useWorking, type WorkingIndicators } from './mcp/working'
+import { Notice, showNotice } from './panels/notice'
 import { LayersPanel } from './panels/LayersPanel'
 import { StylesPanel } from './panels/StylesPanel'
 
@@ -103,6 +105,18 @@ export function Editor({ opened, store, working, topBar, onViewState }: EditorPr
   }, [opened.path, pageId, viewport])
 
   useEffect(() => window.opendraw.onEditCommand((command) => runEditCommand(store, command)), [store])
+  // The Arrange menu bar items run here and follow the selection's enabled state (S-19 Req 6).
+  useEffect(
+    () =>
+      window.opendraw.onArrangeCommand((command) => {
+        const message = runArrange(store, command as ArrangeCommand)
+        if (message) showNotice(message)
+      }),
+    [store]
+  )
+  useEffect(() => {
+    window.opendraw.setArrangeState(arrangeState(store, selection))
+  }, [store, selection, doc])
 
 
   useEffect(() => {
@@ -111,7 +125,13 @@ export function Editor({ opened, store, working, topBar, onViewState }: EditorPr
       const center = canvasSize.current
         ? { x: canvasSize.current.width / 2, y: canvasSize.current.height / 2 }
         : { x: 0, y: 0 }
-      if (mod && event.key.toLowerCase() === 'z') {
+      const arrange = arrangeShortcut(event)
+      if (arrange) {
+        if (isEditable(document.activeElement)) return
+        event.preventDefault()
+        const message = runArrange(store, arrange)
+        if (message) showNotice(message)
+      } else if (mod && event.key.toLowerCase() === 'z') {
         if (isEditable(document.activeElement)) return
         event.preventDefault()
         runEditCommand(store, event.shiftKey ? 'redo' : 'undo')
@@ -162,6 +182,7 @@ export function Editor({ opened, store, working, topBar, onViewState }: EditorPr
       />
       </TokensContext.Provider>
       <StylesPanel store={store} nodes={nodes} selection={selection} measure={measureNode} onPreview={onPanelPreview} />
+      <Notice />
     </div>
   )
 }

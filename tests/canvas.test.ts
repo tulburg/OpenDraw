@@ -113,8 +113,7 @@ try {
     // Hover outlines what a click would pick.
     await escape()
     await app.mouseMove(b.x, b.y)
-    await Bun.sleep(50)
-    const hover = await app.eval(`!!document.querySelector('.hover-outline')`)
+    const hover = await app.waitFor(`document.querySelector('.hover-outline') !== null`, 2000).then(() => true, () => false)
     expect(hover, 'no hover outline')
     const handles = await app.eval<number>(`(window.opendrawStore.select(['Card']), new Promise((r) => setTimeout(() =>
       r(document.querySelectorAll('.resize-handle').length + ':' + document.querySelector('.size-label')?.textContent), 50)))`)

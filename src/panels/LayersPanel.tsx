@@ -1,12 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import type { DesignNode } from '../../shared/document'
-import { toHTML } from '../../shared/html-out'
-import { canWrap, wrapInFrame } from '../canvas/arrange'
-import { deleteSelection, duplicateSelection } from '../canvas/commands'
 import { type DocumentStore, type Transaction, useStore } from '../document/store'
-import { measureNode } from '../Editor'
 import { CommentsPanel } from './CommentsPanel'
+import { LayerMenu } from './LayerMenu'
 import { PagesList } from './PagesList'
 import { TokensPanel } from './TokensPanel'
 
@@ -129,12 +126,7 @@ function LayerTree({ store, nodes, selection, onSelect }: LayerTreeProps) {
     saveCollapsed(next)
   }, [selection])
 
-  useEffect(() => {
-    if (!menu) return
-    const down = (event: PointerEvent) => !(event.target as Element).closest('.layer-menu') && setMenu(null)
-    window.addEventListener('pointerdown', down, true)
-    return () => window.removeEventListener('pointerdown', down, true)
-  }, [menu])
+  const closeMenu = useCallback(() => setMenu(null), [])
 
   const rows = flatten(nodes, pageId, collapsed)
   const rowById = new Map(rows.map((r) => [r.node.id, r]))
@@ -190,9 +182,6 @@ function LayerTree({ store, nodes, selection, onSelect }: LayerTreeProps) {
     setDrop(null)
   }
 
-  const selectedNodes = selection.map((id) => rowById.get(id)?.node).filter((n): n is DesignNode => !!n)
-  const allHidden = selectedNodes.length > 0 && selectedNodes.every((n) => n.style.display === 'none')
-  const allLocked = selectedNodes.length > 0 && selectedNodes.every((n) => n.locked)
 
   return (
     <>
@@ -321,65 +310,7 @@ function LayerTree({ store, nodes, selection, onSelect }: LayerTreeProps) {
           )
         })}
       </ul>
-      {menu && selection.length > 0 && (
-        <div className="page-menu layer-menu" data-testid="layer-menu" style={{ left: menu.x, top: menu.y }}>
-          <button type="button" data-testid="layer-menu-rename" disabled={selection.length !== 1} onClick={() => (setMenu(null), setRenaming(selection[0]))}>
-            Rename
-          </button>
-          <button
-            type="button"
-            data-testid="layer-menu-duplicate"
-            onClick={() => {
-              setMenu(null)
-              duplicateSelection(store, measureNode)
-            }}
-          >
-            Duplicate
-          </button>
-          <button type="button" data-testid="layer-menu-hide" onClick={() => run(allHidden ? 'Show' : 'Hide', (tx) => tx.setHidden(selection, !allHidden))}>
-            {allHidden ? 'Show' : 'Hide'}
-          </button>
-          <button type="button" data-testid="layer-menu-lock" onClick={() => run(allLocked ? 'Unlock' : 'Lock', (tx) => tx.setLocked(selection, !allLocked))}>
-            {allLocked ? 'Unlock' : 'Lock'}
-          </button>
-          <button
-            type="button"
-            data-testid="layer-menu-wrap"
-            disabled={!canWrap(store, selection)}
-            onClick={() => {
-              setMenu(null)
-              try {
-                wrapInFrame(store, selection, document.querySelector('.canvas-world') ?? document)
-              } catch (err) {
-                console.warn(err)
-              }
-            }}
-          >
-            Wrap in frame
-          </button>
-          <button
-            type="button"
-            data-testid="layer-menu-copy-html"
-            onClick={() => {
-              setMenu(null)
-              void navigator.clipboard.writeText(selectedNodes.map((n) => toHTML(n)).join('\n'))
-            }}
-          >
-            Copy as HTML
-          </button>
-          <button
-            type="button"
-            className="danger"
-            data-testid="layer-menu-delete"
-            onClick={() => {
-              setMenu(null)
-              deleteSelection(store)
-            }}
-          >
-            Delete
-          </button>
-        </div>
-      )}
+      {menu && <LayerMenu store={store} x={menu.x} y={menu.y} onClose={closeMenu} onRename={setRenaming} />}
     </>
   )
 }

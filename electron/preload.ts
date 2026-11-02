@@ -73,6 +73,13 @@ const api = {
     ipcRenderer.on('edit:command', listener)
     return () => ipcRenderer.removeListener('edit:command', listener)
   },
+  /** Arrange commands picked from the menu bar (S-19). */
+  onArrangeCommand: (handler: (command: string) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, command: string) => handler(command)
+    ipcRenderer.on('arrange:command', listener)
+    return () => ipcRenderer.removeListener('arrange:command', listener)
+  },
+  setArrangeState: (state: Record<string, boolean>) => ipcRenderer.send('arrange:state', state),
   saveViewport: (file: string, pageId: string, viewport: Viewport): Promise<void> =>
     ipcRenderer.invoke('viewport:save', file, pageId, viewport),
   platform: process.platform
